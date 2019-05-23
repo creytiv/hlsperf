@@ -1,4 +1,5 @@
 
+#include <string.h>
 #include <re.h>
 #include "dashperf.h"
 
@@ -11,6 +12,7 @@
 struct client {
 	struct http_cli *cli;
 	char *uri;
+	struct pl path;
 };
 
 
@@ -31,7 +33,7 @@ static int handle_hls_playlist(struct client *cli, const struct http_msg *msg)
 
 	pl_set_mbuf(&pl, msg->mb);
 
-	while (pl.l) {
+	while (pl.l > 1) {
 
 		const char *end;
 		struct pl line;
@@ -87,9 +89,21 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 int client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri)
 {
 	struct client *cli;
+	const char *rslash;
 	int err;
 
+	if (!clip || !dnsc || !uri)
+		return EINVAL;
+
+	rslash = strrchr(uri, '/');
+	if (!rslash) {
+		re_printf("invalid uri '%s'\n", uri);
+		return EINVAL;
+	}
+
 	cli = mem_zalloc(sizeof(*cli), destructor);
+	if (!cli)
+		return ENOMEM;
 
 	err = http_client_alloc(&cli->cli, dnsc);
 	if (err)
@@ -99,6 +113,10 @@ int client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri)
 	if (err)
 		goto out;
 
+	cli->path.p = uri;
+	cli->path.l = rslash + 1 - uri;
+
+	re_printf("uri path = '%r'\n", &cli->path);
 
  out:
 	if (err)
