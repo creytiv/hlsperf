@@ -14,6 +14,7 @@ struct client {
 	char *uri;
 	struct pl path;
 	struct list playlist;  /* struct mediafile */
+	uint32_t slid;
 };
 
 
@@ -136,8 +137,8 @@ static int handle_hls_playlist(struct client *cli, const struct http_msg *msg)
 		pl_advance(&pl, line.l + 1);
 	}
 
-	re_printf("hls playlist done, %u entries\n",
-		  list_count(&cli->playlist));
+	re_printf("hls playlist done, %u entries, slid=%u\n",
+		  list_count(&cli->playlist), cli->slid);
 
 	return 0;
 }
@@ -146,6 +147,8 @@ static int handle_hls_playlist(struct client *cli, const struct http_msg *msg)
 static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 {
 	struct client *cli = arg;
+	const struct http_hdr *hdr;
+	struct pl slid;
 
 	if (err) {
 		re_printf("http error: %m\n", err);
@@ -165,6 +168,12 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 #if 0
 	re_printf("%H\n", http_msg_print, msg);
 #endif
+
+	hdr = http_msg_xhdr(msg, "Set-Cookie");
+	if (hdr && !re_regex(hdr->val.p, hdr->val.l, "slid=[0-9]+", &slid)) {
+
+		cli->slid = pl_u32(&slid);
+	}
 
 	if (msg_ctype_cmp(&msg->ctyp, "application", "vnd.apple.mpegurl")) {
 		handle_hls_playlist(cli, msg);
