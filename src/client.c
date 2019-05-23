@@ -16,12 +16,58 @@ struct client {
 };
 
 
+static int load_playlist(struct client *cli);
+static void http_resp_handler(int err, const struct http_msg *msg, void *arg);
+
+
 static void destructor(void *data)
 {
 	struct client *cli = data;
 
 	mem_deref(cli->cli);
 	mem_deref(cli->uri);
+}
+
+
+static int get_item(struct client *cli, const char *uri)
+{
+	int err;
+
+	re_printf("get item: %s\n", uri);
+
+	err = http_request(NULL, cli->cli, "GET", uri,
+			   http_resp_handler, NULL, cli, NULL);
+	if (err) {
+		re_printf("http request failed (%m)\n", err);
+		return err;
+	}
+
+	return 0;
+}
+
+
+static void handle_line(struct client *cli, const struct pl *line)
+{
+	char *uri = NULL;
+	int err;
+
+	re_printf("line = '%r'\n", line);
+
+	if (line->p[0] == '#') {
+		return;
+	}
+
+
+	if (0 == re_regex(line->p, line->l, "m3u8")) {
+
+		err = re_sdprintf(&uri, "%r%r", &cli->path, line);
+
+		re_printf("uri = '%s'\n", uri);
+
+		err = get_item(cli, uri);
+	}
+
+	mem_deref(uri);
 }
 
 
@@ -45,7 +91,7 @@ static int handle_hls_playlist(struct client *cli, const struct http_msg *msg)
 		line.p = pl.p;
 		line.l = end - pl.p;
 
-		re_printf("line = '%r'\n", &line);
+		handle_line(cli, &line);
 
 		pl_advance(&pl, line.l + 1);
 	}
@@ -128,11 +174,12 @@ int client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri)
 }
 
 
-int client_start(struct client *cli)
+/* Load or Re-load playlist */
+static int load_playlist(struct client *cli)
 {
 	int err;
 
-	re_printf("start: %s\n", cli->uri);
+	re_printf("load playlist: %s\n", cli->uri);
 
 	err = http_request(NULL, cli->cli, "GET", cli->uri,
 			   http_resp_handler, NULL, cli, NULL);
@@ -143,6 +190,14 @@ int client_start(struct client *cli)
 
 
 	return 0;
+}
+
+
+int client_start(struct client *cli)
+{
+	re_printf("start: %s\n", cli->uri);
+
+	return load_playlist(cli);
 }
 
 
