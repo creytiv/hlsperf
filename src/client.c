@@ -23,6 +23,35 @@ static void destructor(void *data)
 }
 
 
+static int handle_hls_playlist(struct client *cli, const struct http_msg *msg)
+{
+	struct pl pl;
+
+	re_printf("handle hls playlist\n");
+
+	pl_set_mbuf(&pl, msg->mb);
+
+	while (pl.l) {
+
+		const char *end;
+		struct pl line;
+
+		end = pl_strchr(&pl, '\n');
+		if (!end)
+			break;
+
+		line.p = pl.p;
+		line.l = end - pl.p;
+
+		re_printf("line = '%r'\n", &line);
+
+		pl_advance(&pl, line.l + 1);
+	}
+
+	return 0;
+}
+
+
 static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 {
 	struct client *cli = arg;
@@ -34,19 +63,24 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 		return;
 	}
 
-	if (300 <= msg->scode && msg->scode <= 399) {
-
-		const struct http_hdr *hdr;
-
-		hdr = http_msg_hdr(msg, HTTP_HDR_LOCATION);
-
-		re_printf("redirect to %r\n", &hdr->val);
-
+	if (msg->scode <= 199)
+		return;
+	else if (msg->scode >= 300) {
+		re_printf("request failed (%u %r)\n",
+			  msg->scode, &msg->reason);
+		return;
 	}
 
-	re_printf("scode = %u\n", msg->scode);
-
 	re_printf("%H\n", http_msg_print, msg);
+	re_printf("%b\n", msg->mb->buf, msg->mb->end);
+
+	if (msg_ctype_cmp(&msg->ctyp, "application", "vnd.apple.mpegurl")) {
+		handle_hls_playlist(cli, msg);
+	}
+	else {
+		re_printf("unknown content-type: %r/%r\n",
+			  &msg->ctyp.type, &msg->ctyp.subtype);
+	}
 }
 
 
