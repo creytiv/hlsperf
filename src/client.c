@@ -13,6 +13,13 @@ struct client {
 	struct http_cli *cli;
 	char *uri;
 	struct pl path;
+	struct list playlist;  /* struct mediafile */
+};
+
+
+struct mediafile {
+	struct le le;
+	char *filename;
 };
 
 
@@ -20,12 +27,36 @@ static int load_playlist(struct client *cli);
 static void http_resp_handler(int err, const struct http_msg *msg, void *arg);
 
 
+static void mediafile_destructor(void *data)
+{
+	struct mediafile *mf = data;
+
+	list_unlink(&mf->le);
+	mem_deref(mf->filename);
+}
+
+
 static void destructor(void *data)
 {
 	struct client *cli = data;
 
+	list_flush(&cli->playlist);
 	mem_deref(cli->cli);
 	mem_deref(cli->uri);
+}
+
+
+static int mediafile_new(struct list *lst, const char *filename)
+{
+	struct mediafile *mf;
+
+	mf = mem_zalloc(sizeof(*mf), mediafile_destructor);
+
+	str_dup(&mf->filename, filename);
+
+	list_append(lst, &mf->le, mf);
+
+	return 0;
 }
 
 
@@ -51,20 +82,29 @@ static void handle_line(struct client *cli, const struct pl *line)
 	char *uri = NULL;
 	int err;
 
-	re_printf("line = '%r'\n", line);
-
-	if (line->p[0] == '#') {
+	/* ignore comment */
+	if (line->p[0] == '#')
 		return;
-	}
-
 
 	if (0 == re_regex(line->p, line->l, "m3u8")) {
 
+		/* recurse into next playlist */
 		err = re_sdprintf(&uri, "%r%r", &cli->path, line);
 
-		re_printf("uri = '%s'\n", uri);
+		get_item(cli, uri);
+	}
+	else if (0 == re_regex(line->p, line->l, "m4s")) {
 
-		err = get_item(cli, uri);
+		char *filename;
+
+		pl_strdup(&filename, line);
+
+		mediafile_new(&cli->playlist, filename);
+
+		mem_deref(filename);
+	}
+	else {
+		re_printf("line unhandled: %r\n", line);
 	}
 
 	mem_deref(uri);
@@ -96,6 +136,9 @@ static int handle_hls_playlist(struct client *cli, const struct http_msg *msg)
 		pl_advance(&pl, line.l + 1);
 	}
 
+	re_printf("hls playlist done, %u entries\n",
+		  list_count(&cli->playlist));
+
 	return 0;
 }
 
@@ -103,8 +146,6 @@ static int handle_hls_playlist(struct client *cli, const struct http_msg *msg)
 static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 {
 	struct client *cli = arg;
-
-	re_printf("resp:\n");
 
 	if (err) {
 		re_printf("http error: %m\n", err);
@@ -119,8 +160,11 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 		return;
 	}
 
+	re_printf("success. %u bytes\n", msg->clen);
+
+#if 0
 	re_printf("%H\n", http_msg_print, msg);
-	re_printf("%b\n", msg->mb->buf, msg->mb->end);
+#endif
 
 	if (msg_ctype_cmp(&msg->ctyp, "application", "vnd.apple.mpegurl")) {
 		handle_hls_playlist(cli, msg);
