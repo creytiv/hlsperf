@@ -43,6 +43,13 @@ static int dns_init(struct dnsc **dnsc)
 }
 
 
+static void tmr_handler(void *arg)
+{
+	re_printf("timer elapsed -- terminate\n");
+	re_cancel();
+}
+
+
 static void signal_handler(int signum)
 {
 	(void)signum;
@@ -67,6 +74,7 @@ int main(int argc, char *argv[])
 {
 	struct dnsc *dnsc = NULL;
 	const char *uri, *dur, *num;
+	struct tmr tmr;
 	uint32_t duration;
 	uint32_t num_sess;
 	int err = 0;
@@ -89,8 +97,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	re_printf("argc=%d, optind=%d\n", argc, optind);
-
 	if (argc < 2 || (argc != (optind + 3))) {
 		usage();
 		return -2;
@@ -100,7 +106,7 @@ int main(int argc, char *argv[])
 	dur = argv[optind + 1];
 	num = argv[optind + 2];
 
-	re_printf("uri=%s, dur=%s, num=%s\n", uri, dur, num);
+	re_printf("dashperf -- uri=%s, dur=%s, num=%s\n", uri, dur, num);
 
 	duration = atoi(dur);
 	num_sess = atoi(num);
@@ -120,6 +126,8 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+	tmr_init(&tmr);
+
 	(void)sys_coredump_set(true);
 
 	err = dns_init(&dnsc);
@@ -134,12 +142,14 @@ int main(int argc, char *argv[])
 	if (err)
 		goto out;
 
+	tmr_start(&tmr, duration * 1000, tmr_handler, NULL);
 
 	(void)re_main(signal_handler);
 
 	re_printf("Hasta la vista\n");
 
  out:
+	tmr_cancel(&tmr);
 	mem_deref(cli);
 	mem_deref(dnsc);
 
