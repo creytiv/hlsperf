@@ -63,29 +63,36 @@ static void signal_handler(int signum)
 static void usage(void)
 {
 	re_fprintf(stderr,
-		   "Usage: dashperf [options] <uri> <duration> <num>\n"
-		   "\n"
-		   "options:\n"
-		   "\n");
+		   "usage: dashperf [-n num] [-t timeout] <http-uri>\n"
+		   "\t-n <num>      Number of parallel sessions\n"
+		   "\t-t <timeout>  Timeout in seconds\n");
 }
 
 
 int main(int argc, char *argv[])
 {
 	struct dnsc *dnsc = NULL;
-	const char *uri, *dur, *num;
+	const char *uri;
 	struct tmr tmr;
-	uint32_t duration;
-	uint32_t num_sess;
+	uint32_t num_sess = 1;
+	uint32_t timeout = 0;
 	int err = 0;
 
 	for (;;) {
 
-		const int c = getopt(argc, argv, "h");
+		const int c = getopt(argc, argv, "hn:t:");
 		if (0 > c)
 			break;
 
 		switch (c) {
+
+		case 'n':
+			num_sess = atoi(optarg);
+			break;
+
+		case 't':
+			timeout = atoi(optarg);
+			break;
 
 		case '?':
 		default:
@@ -97,28 +104,14 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (argc < 2 || (argc != (optind + 3))) {
+	if (argc < 2 || (argc != (optind + 1))) {
 		usage();
 		return -2;
 	}
 
 	uri = argv[optind + 0];
-	dur = argv[optind + 1];
-	num = argv[optind + 2];
 
-	re_printf("dashperf -- uri=%s, dur=%s, num=%s\n", uri, dur, num);
-
-	duration = atoi(dur);
-	num_sess = atoi(num);
-
-	if (duration == 0) {
-		re_printf("invalid duration\n");
-		return -2;
-	}
-	if (num_sess == 0) {
-		re_printf("invalid number of sessions\n");
-		return -2;
-	}
+	re_printf("dashperf -- uri=%s, sessions=%u\n", uri, num_sess);
 
 	err = libre_init();
 	if (err) {
@@ -142,7 +135,10 @@ int main(int argc, char *argv[])
 	if (err)
 		goto out;
 
-	tmr_start(&tmr, duration * 1000, tmr_handler, NULL);
+	if (timeout != 0) {
+		re_printf("starting timeout timer, %u seconds\n", timeout);
+		tmr_start(&tmr, timeout * 1000, tmr_handler, NULL);
+	}
 
 	(void)re_main(signal_handler);
 
