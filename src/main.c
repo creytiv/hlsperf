@@ -15,9 +15,6 @@
 #include <re_dbg.h>
 
 
-struct client *cli;
-
-
 static int dns_init(struct dnsc **dnsc)
 {
 	struct sa nsv[8];
@@ -74,8 +71,10 @@ int main(int argc, char *argv[])
 	struct dnsc *dnsc = NULL;
 	const char *uri;
 	struct tmr tmr;
+	struct client **cliv = NULL;
 	uint32_t num_sess = 1;
 	uint32_t timeout = 0;
+	size_t i;
 	int err = 0;
 
 	for (;;) {
@@ -127,13 +126,22 @@ int main(int argc, char *argv[])
 	if (err)
 		goto out;
 
-	err = client_alloc(&cli, dnsc, uri);
-	if (err)
+	cliv = mem_reallocarray(NULL, num_sess, sizeof(*cliv), NULL);
+	if (!cliv) {
+		err = ENOMEM;
 		goto out;
+	}
 
-	err = client_start(cli);
-	if (err)
-		goto out;
+	for (i=0; i<num_sess; i++) {
+
+		err = client_alloc(&cliv[i], dnsc, uri);
+		if (err)
+			goto out;
+
+		err = client_start(cliv[i]);
+		if (err)
+			goto out;
+	}
 
 	if (timeout != 0) {
 		re_printf("starting timeout timer, %u seconds\n", timeout);
@@ -145,9 +153,12 @@ int main(int argc, char *argv[])
 	re_printf("Hasta la vista\n");
 
  out:
-	tmr_cancel(&tmr);
-	mem_deref(cli);
+	for (i=0; i<num_sess; i++) {
+		mem_deref(cliv[i]);
+	}
+	mem_deref(cliv);
 	mem_deref(dnsc);
+	tmr_cancel(&tmr);
 
 	libre_close();
 
