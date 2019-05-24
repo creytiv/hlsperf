@@ -89,6 +89,19 @@ static void handle_line(struct client *cli, const struct pl *line)
 
 	if (0 == re_regex(line->p, line->l, "m3u8")) {
 
+		if (cli->slid == 0) {
+
+			struct pl slid;
+
+			if (0 == re_regex(line->p, line->l,
+					  "?slid=[0-9]+", &slid)) {
+				cli->slid = pl_u32(&slid);
+
+				re_printf("*** Setting SLID to %u\n",
+					  cli->slid);
+			}
+		}
+
 		/* recurse into next playlist */
 		err = re_sdprintf(&uri, "%r%r", &cli->path, line);
 
@@ -117,6 +130,12 @@ static int handle_hls_playlist(struct client *cli, const struct http_msg *msg)
 	struct pl pl;
 
 	re_printf("handle hls playlist\n");
+
+#if 0
+	re_printf("- - - - - - - - - - \n");
+	re_printf("%b\n", mbuf_buf(msg->mb), mbuf_get_left(msg->mb));
+	re_printf("- - - - - - - - - - \n");
+#endif
 
 	pl_set_mbuf(&pl, msg->mb);
 
@@ -147,8 +166,6 @@ static int handle_hls_playlist(struct client *cli, const struct http_msg *msg)
 static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 {
 	struct client *cli = arg;
-	const struct http_hdr *hdr;
-	struct pl slid;
 
 	if (err) {
 		re_printf("http error: %m\n", err);
@@ -168,12 +185,6 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 #if 0
 	re_printf("%H\n", http_msg_print, msg);
 #endif
-
-	hdr = http_msg_xhdr(msg, "Set-Cookie");
-	if (hdr && !re_regex(hdr->val.p, hdr->val.l, "slid=[0-9]+", &slid)) {
-
-		cli->slid = pl_u32(&slid);
-	}
 
 	if (msg_ctype_cmp(&msg->ctyp, "application", "vnd.apple.mpegurl")) {
 		handle_hls_playlist(cli, msg);
