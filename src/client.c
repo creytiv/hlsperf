@@ -104,6 +104,8 @@ static void handle_line(struct client *cli, const struct pl *line)
 
 		/* recurse into next playlist */
 		err = re_sdprintf(&uri, "%r%r", &cli->path, line);
+		if (err)
+			return;
 
 		get_item(cli, uri);
 	}
