@@ -22,6 +22,8 @@ struct client {
 	uint32_t slid;
 	struct tmr tmr_load;
 	struct tmr tmr_play;
+	client_error_h *errorh;
+	void *arg;
 };
 
 
@@ -225,12 +227,26 @@ static void tmr_handler(void *data)
 }
 
 
+static void client_close(struct client *cli, int err)
+{
+	tmr_cancel(&cli->tmr_play);
+	tmr_cancel(&cli->tmr_load);
+	mem_deref(cli->cli);
+
+	if (cli->errorh)
+		cli->errorh(err, cli->arg);
+
+	cli->errorh = NULL;
+}
+
+
 static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 {
 	struct client *cli = arg;
 
 	if (err) {
 		re_printf("http error: %m\n", err);
+		client_close(cli, err);
 		return;
 	}
 
@@ -239,6 +255,7 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 	else if (msg->scode >= 300) {
 		re_printf("request failed (%u %r)\n",
 			  msg->scode, &msg->reason);
+		client_close(cli, EPROTO);
 		return;
 	}
 
@@ -272,7 +289,8 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 }
 
 
-int client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri)
+int client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri,
+		 client_error_h *errorh, void *arg)
 {
 	struct client *cli;
 	const char *rslash;
@@ -317,6 +335,9 @@ int client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri)
 
 	cli->path.p = uri;
 	cli->path.l = rslash + 1 - uri;
+
+	cli->errorh = errorh;
+	cli->arg = arg;
 
 	re_printf("uri path = '%r'\n", &cli->path);
 

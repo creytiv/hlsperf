@@ -40,6 +40,13 @@ static int dns_init(struct dnsc **dnsc)
 }
 
 
+static void client_error_handler(int err, void *arg)
+{
+	DEBUG_WARNING("client error (%m) -- stop\n", err);
+	re_cancel();
+}
+
+
 static void tmr_handler(void *arg)
 {
 	re_printf("timer elapsed -- terminate\n");
@@ -134,7 +141,8 @@ int main(int argc, char *argv[])
 
 	for (i=0; i<num_sess; i++) {
 
-		err = client_alloc(&cliv[i], dnsc, uri);
+		err = client_alloc(&cliv[i], dnsc, uri,
+				   client_error_handler, NULL);
 		if (err)
 			goto out;
 
