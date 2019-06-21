@@ -20,6 +20,7 @@ struct client {
 	struct pl path;
 	struct list playlist;  /* struct mediafile */
 	uint32_t slid;
+	struct tmr tmr_load;
 	struct tmr tmr_play;
 };
 
@@ -48,6 +49,7 @@ static void destructor(void *data)
 	struct client *cli = data;
 
 	tmr_cancel(&cli->tmr_play);
+	tmr_cancel(&cli->tmr_load);
 	list_flush(&cli->playlist);
 	mem_deref(cli->cli);
 	mem_deref(cli->uri);
@@ -252,12 +254,16 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 	}
 	else if (msg_ctype_cmp(&msg->ctyp, "video", "mp4")) {
 
-		re_printf("got media file -- wait %d seconds\n",
-			  DURATION);
+		uint32_t delay;
+
+		delay = DURATION*1000 + rand_u32() % 1000;
+
+		re_printf("got media file -- wait %u milliseconds\n",
+			  delay);
 
 		mem_deref(list_ledata(cli->playlist.head));
 
-		tmr_start(&cli->tmr_play, DURATION * 1000, tmr_handler, cli);
+		tmr_start(&cli->tmr_play, delay, tmr_handler, cli);
 	}
 	else {
 		DEBUG_NOTICE("unknown content-type: %r/%r\n",
@@ -343,11 +349,23 @@ static int load_playlist(struct client *cli)
 }
 
 
+static void tmr_load_handler(void *data)
+{
+	struct client *cli = data;
+
+	load_playlist(cli);
+}
+
+
 int client_start(struct client *cli)
 {
-	re_printf("start: %s\n", cli->uri);
+	uint32_t delay = 500 + rand_u32() % 500;
 
-	return load_playlist(cli);
+	re_printf("start: %s (delay=%ums)\n", cli->uri, delay);
+
+	tmr_start(&cli->tmr_load, delay, tmr_load_handler, cli);
+
+	return 0;
 }
 
 
