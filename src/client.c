@@ -9,12 +9,18 @@
 #include <re_dbg.h>
 
 
+enum {
+	DURATION = 10
+};
+
+
 struct client {
 	struct http_cli *cli;
 	char *uri;
 	struct pl path;
 	struct list playlist;  /* struct mediafile */
 	uint32_t slid;
+	struct tmr tmr_play;
 };
 
 
@@ -41,6 +47,7 @@ static void destructor(void *data)
 {
 	struct client *cli = data;
 
+	tmr_cancel(&cli->tmr_play);
 	list_flush(&cli->playlist);
 	mem_deref(cli->cli);
 	mem_deref(cli->uri);
@@ -80,6 +87,7 @@ static int get_item(struct client *cli, const char *uri)
 
 static void handle_line(struct client *cli, const struct pl *line)
 {
+	struct pl file, ext;
 	char *uri = NULL;
 	int err;
 
@@ -87,7 +95,14 @@ static void handle_line(struct client *cli, const struct pl *line)
 	if (line->p[0] == '#')
 		return;
 
-	if (0 == re_regex(line->p, line->l, "m3u8")) {
+	if (re_regex(line->p, line->l, "[^.]+.[a-z0-9]+", &file, &ext)) {
+		DEBUG_NOTICE("could not parse line (%r)\n", line);
+		return;
+	}
+
+	re_printf("ext: '%r'\n", &ext);
+
+	if (0 == pl_strcasecmp(&ext, "m3u8")) {
 
 		if (cli->slid == 0) {
 
@@ -95,9 +110,10 @@ static void handle_line(struct client *cli, const struct pl *line)
 
 			if (0 == re_regex(line->p, line->l,
 					  "?slid=[0-9]+", &slid)) {
+
 				cli->slid = pl_u32(&slid);
 
-				re_printf("*** Setting SLID to %u\n",
+				re_printf("hls: setting SLID to %u\n",
 					  cli->slid);
 			}
 		}
@@ -109,7 +125,8 @@ static void handle_line(struct client *cli, const struct pl *line)
 
 		get_item(cli, uri);
 	}
-	else if (0 == re_regex(line->p, line->l, "m4s")) {
+	else if (0 == pl_strcasecmp(&ext, "m4s") ||
+		 0 == pl_strcasecmp(&ext, "mp4")) {
 
 		char *filename;
 
@@ -120,8 +137,36 @@ static void handle_line(struct client *cli, const struct pl *line)
 		mem_deref(filename);
 	}
 	else {
-		re_printf("line unhandled: %r\n", line);
+		DEBUG_NOTICE("hls: unknown extension: %r\n", &ext);
 	}
+
+	mem_deref(uri);
+}
+
+
+static void start_player(struct client *cli)
+{
+	struct mediafile *mf;
+	char *uri;
+	int err;
+
+	re_printf("start_player:\n");
+
+	/* get the first playlist item */
+
+	mf = list_ledata(list_head(&cli->playlist));
+	if (!mf) {
+		re_printf("playlist is empty!\n");
+		return;
+	}
+
+	/* download the media file */
+
+	err = re_sdprintf(&uri, "%r%s", &cli->path, mf->filename);
+	if (err)
+		return;
+
+	get_item(cli, uri);
 
 	mem_deref(uri);
 }
@@ -161,7 +206,20 @@ static int handle_hls_playlist(struct client *cli, const struct http_msg *msg)
 	re_printf("hls playlist done, %u entries, slid=%u\n",
 		  list_count(&cli->playlist), cli->slid);
 
+	if (!list_isempty(&cli->playlist)) {
+
+		start_player(cli);
+	}
+
 	return 0;
+}
+
+
+static void tmr_handler(void *data)
+{
+	struct client *cli = data;
+
+	start_player(cli);
 }
 
 
@@ -182,17 +240,27 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 		return;
 	}
 
-	re_printf("success. %u bytes\n", msg->clen);
+	re_printf("http response. %u bytes\n", msg->clen);
 
 #if 0
 	re_printf("%H\n", http_msg_print, msg);
 #endif
 
 	if (msg_ctype_cmp(&msg->ctyp, "application", "vnd.apple.mpegurl")) {
+
 		handle_hls_playlist(cli, msg);
 	}
+	else if (msg_ctype_cmp(&msg->ctyp, "video", "mp4")) {
+
+		re_printf("got media file -- wait %d seconds\n",
+			  DURATION);
+
+		mem_deref(list_ledata(cli->playlist.head));
+
+		tmr_start(&cli->tmr_play, DURATION * 1000, tmr_handler, cli);
+	}
 	else {
-		re_printf("unknown content-type: %r/%r\n",
+		DEBUG_NOTICE("unknown content-type: %r/%r\n",
 			  &msg->ctyp.type, &msg->ctyp.subtype);
 	}
 }
