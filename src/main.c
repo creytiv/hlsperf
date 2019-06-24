@@ -73,6 +73,24 @@ static void usage(void)
 }
 
 
+static void show_summary(struct client * const *cliv, size_t clic)
+{
+	size_t n_connected = 0;
+	size_t i;
+
+	for (i=0; i<clic; i++) {
+
+		if (cliv[i]->connected)
+			++n_connected;
+	}
+
+	re_printf("- - - dashperf summary - - -\n");
+	re_printf("total sessions:  %zu\n", clic);
+	re_printf("connected:       %zu\n", n_connected);
+	re_printf("- - - - - - - - - - -  - - -\n");
+}
+
+
 int main(int argc, char *argv[])
 {
 	struct dnsc *dnsc = NULL;
@@ -161,6 +179,7 @@ int main(int argc, char *argv[])
 	re_printf("Hasta la vista\n");
 
  out:
+	show_summary(cliv, num_sess);
 	for (i=0; i<num_sess; i++) {
 		mem_deref(cliv[i]);
 	}

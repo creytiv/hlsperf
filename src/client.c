@@ -19,21 +19,6 @@ enum {
 };
 
 
-struct client {
-	struct http_cli *cli;
-	char *uri;
-	struct pl path;
-	struct list playlist;  /* struct mediafile */
-	uint32_t slid;
-	struct tmr tmr_load;
-	struct tmr tmr_play;
-	uint64_t ts_start;
-	size_t bytes;
-	client_error_h *errorh;
-	void *arg;
-};
-
-
 static int load_playlist(struct client *cli);
 static void http_resp_handler(int err, const struct http_msg *msg, void *arg);
 
@@ -269,6 +254,8 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 #endif
 
 	if (msg_ctype_cmp(&msg->ctyp, "application", "vnd.apple.mpegurl")) {
+
+		cli->connected = true;
 
 		handle_hls_playlist(cli, msg);
 	}
