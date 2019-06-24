@@ -234,7 +234,7 @@ static void client_close(struct client *cli, int err)
 {
 	tmr_cancel(&cli->tmr_play);
 	tmr_cancel(&cli->tmr_load);
-	mem_deref(cli->cli);
+	cli->cli = mem_deref(cli->cli);
 
 	if (cli->errorh)
 		cli->errorh(err, cli->arg);
