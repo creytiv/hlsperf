@@ -22,6 +22,8 @@ struct client {
 	uint32_t slid;
 	struct tmr tmr_load;
 	struct tmr tmr_play;
+	uint64_t ts_start;
+	size_t bytes;
 	client_error_h *errorh;
 	void *arg;
 };
@@ -55,6 +57,21 @@ static void destructor(void *data)
 	list_flush(&cli->playlist);
 	mem_deref(cli->cli);
 	mem_deref(cli->uri);
+}
+
+
+static void print_summary(struct client *cli)
+{
+	double dur;
+	size_t bits = cli->bytes * 8;
+
+	dur = (double)(tmr_jiffies() - cli->ts_start) * .001;
+
+	re_printf("- - - summary - - -\n");
+	re_printf("summary: downloaded %zu bytes in %.1f seconds"
+		  " (average %.1f bits/s)\n",
+		  cli->bytes, dur, bits / dur);
+	re_printf("- - - - - - - - - -\n");
 }
 
 
@@ -148,6 +165,12 @@ static void handle_line(struct client *cli, const struct pl *line)
 }
 
 
+static void complete(struct client *cli)
+{
+	print_summary(cli);
+}
+
+
 static void start_player(struct client *cli)
 {
 	struct mediafile *mf;
@@ -156,11 +179,15 @@ static void start_player(struct client *cli)
 
 	re_printf("start_player:\n");
 
+	if (!cli->ts_start)
+		cli->ts_start = tmr_jiffies();
+
 	/* get the first playlist item */
 
 	mf = list_ledata(list_head(&cli->playlist));
 	if (!mf) {
 		re_printf("playlist is empty!\n");
+		complete(cli);
 		return;
 	}
 
@@ -272,6 +299,8 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 	else if (msg_ctype_cmp(&msg->ctyp, "video", "mp4")) {
 
 		uint32_t delay;
+
+		cli->bytes += msg->clen;
 
 		delay = DURATION*1000 + rand_u32() % 1000;
 
