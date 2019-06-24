@@ -4,5 +4,6 @@
 # Copyright (C) 2010 Creytiv.com
 #
 
-SRCS	+= main.c
 SRCS	+= client.c
+SRCS	+= main.c
+SRCS	+= mediafile.c

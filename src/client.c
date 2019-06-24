@@ -1,3 +1,8 @@
+/**
+ * @file client.c Dash Performance client
+ *
+ * Copyright (C) 2019 Creytiv.com
+ */
 
 #include <string.h>
 #include <re.h>
@@ -29,23 +34,8 @@ struct client {
 };
 
 
-struct mediafile {
-	struct le le;
-	char *filename;
-};
-
-
 static int load_playlist(struct client *cli);
 static void http_resp_handler(int err, const struct http_msg *msg, void *arg);
-
-
-static void mediafile_destructor(void *data)
-{
-	struct mediafile *mf = data;
-
-	list_unlink(&mf->le);
-	mem_deref(mf->filename);
-}
 
 
 static void destructor(void *data)
@@ -72,20 +62,6 @@ static void print_summary(struct client *cli)
 		  " (average %.1f bits/s)\n",
 		  cli->bytes, dur, bits / dur);
 	re_printf("- - - - - - - - - -\n");
-}
-
-
-static int mediafile_new(struct list *lst, const char *filename)
-{
-	struct mediafile *mf;
-
-	mf = mem_zalloc(sizeof(*mf), mediafile_destructor);
-
-	str_dup(&mf->filename, filename);
-
-	list_append(lst, &mf->le, mf);
-
-	return 0;
 }
 
 
