@@ -82,8 +82,6 @@ static void handle_line(struct client *cli, const struct pl *line)
 		return;
 	}
 
-	re_printf("ext: '%r'\n", &ext);
-
 	if (0 == pl_strcasecmp(&ext, "m3u8")) {
 
 		if (cli->slid == 0) {
