@@ -94,9 +94,9 @@ static void show_summary(struct client * const *cliv, size_t clic)
 		}
 
 		if (cli->saved_err)
-			re_printf("%u: %m\n", i, cli->saved_err);
+			re_printf("%u: error %m\n", i, cli->saved_err);
 		if (cli->saved_scode)
-			re_printf("%u: %u\n", i, cli->saved_scode);
+			re_printf("%u: scode %u\n", i, cli->saved_scode);
 	}
 
 	if (n_connected)

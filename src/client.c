@@ -54,8 +54,6 @@ static int get_item(struct client *cli, const char *uri)
 {
 	int err;
 
-	re_printf("get item: %s\n", uri);
-
 	err = http_request(NULL, cli->cli, "GET", uri,
 			   http_resp_handler, NULL, cli, NULL);
 	if (err) {
@@ -92,9 +90,6 @@ static void handle_line(struct client *cli, const struct pl *line)
 					  "?slid=[0-9]+", &slid)) {
 
 				cli->slid = pl_u32(&slid);
-
-				re_printf("hls: setting SLID to %u\n",
-					  cli->slid);
 			}
 		}
 
@@ -136,8 +131,6 @@ static void start_player(struct client *cli)
 	char *uri;
 	int err;
 
-	re_printf("start_player:\n");
-
 	/* get the first playlist item */
 
 	mf = list_ledata(list_head(&cli->playlist));
@@ -162,8 +155,6 @@ static void start_player(struct client *cli)
 static int handle_hls_playlist(struct client *cli, const struct http_msg *msg)
 {
 	struct pl pl;
-
-	re_printf("handle hls playlist\n");
 
 #if 0
 	re_printf("- - - - - - - - - - \n");
@@ -190,8 +181,10 @@ static int handle_hls_playlist(struct client *cli, const struct http_msg *msg)
 		pl_advance(&pl, line.l + 1);
 	}
 
+#if 0
 	re_printf("hls playlist done, %u entries, slid=%u\n",
 		  list_count(&cli->playlist), cli->slid);
+#endif
 
 	if (!list_isempty(&cli->playlist)) {
 
@@ -264,9 +257,6 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 		cli->bytes += msg->clen;
 
 		delay = DURATION*1000 + rand_u32() % 1000;
-
-		re_printf("got media file -- wait %u milliseconds\n",
-			  delay);
 
 		mem_deref(list_ledata(cli->playlist.head));
 
