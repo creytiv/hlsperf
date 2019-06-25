@@ -137,6 +137,12 @@ int main(int argc, char *argv[])
 
 	re_printf("dashperf -- uri=%s, sessions=%u\n", uri, num_sess);
 
+	err = fd_setsize(4096);
+	if (err) {
+		re_fprintf(stderr, "fd_setsize error: %m\n", err);
+		goto out;
+	}
+
 	err = libre_init();
 	if (err) {
 		(void)re_fprintf(stderr, "libre_init: %m\n", err);
