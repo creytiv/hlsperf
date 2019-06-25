@@ -138,9 +138,6 @@ static void start_player(struct client *cli)
 
 	re_printf("start_player:\n");
 
-	if (!cli->ts_start)
-		cli->ts_start = tmr_jiffies();
-
 	/* get the first playlist item */
 
 	mf = list_ledata(list_head(&cli->playlist));
@@ -245,13 +242,14 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 		return;
 	}
 
-	re_printf("http response. %u bytes\n", msg->clen);
-
 #if 0
 	re_printf("%H\n", http_msg_print, msg);
 #endif
 
 	if (msg_ctype_cmp(&msg->ctyp, "application", "vnd.apple.mpegurl")) {
+
+		if (!cli->ts_conn)
+			cli->ts_conn = tmr_jiffies();
 
 		cli->connected = true;
 
@@ -347,6 +345,8 @@ static int load_playlist(struct client *cli)
 	int err;
 
 	re_printf("load playlist: %s\n", cli->uri);
+
+	cli->ts_start = tmr_jiffies();
 
 	err = http_request(NULL, cli->cli, "GET", cli->uri,
 			   http_resp_handler, NULL, cli, NULL);

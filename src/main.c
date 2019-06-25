@@ -77,16 +77,34 @@ static void show_summary(struct client * const *cliv, size_t clic)
 {
 	size_t n_connected = 0;
 	size_t i;
+	int64_t conn_min=99999999, conn_avg = 0, conn_max = -1;
 
 	for (i=0; i<clic; i++) {
 
-		if (cliv[i]->connected)
+		const struct client *cli = cliv[i];
+
+		if (cliv[i]->connected) {
+
+			int64_t conn_time = cli->ts_conn - cli->ts_start;
+
 			++n_connected;
+
+			conn_min = min(conn_time, conn_min);
+			conn_avg += conn_time;
+			conn_max = max(conn_time, conn_max);
+		}
 	}
+
+	if (n_connected)
+		conn_avg /= n_connected;
+	else
+		conn_avg = -1;
 
 	re_printf("- - - dashperf summary - - -\n");
 	re_printf("total sessions:  %zu\n", clic);
 	re_printf("connected:       %zu\n", n_connected);
+	re_printf("min/avg/max:     %lli/%lli/%lli ms\n",
+		  conn_min, conn_avg, conn_max);
 	re_printf("- - - - - - - - - - -  - - -\n");
 }
 

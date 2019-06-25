@@ -20,6 +20,7 @@ struct client {
 	struct tmr tmr_load;
 	struct tmr tmr_play;
 	uint64_t ts_start;
+	uint64_t ts_conn;
 	size_t bytes;
 	bool connected;
 	client_error_h *errorh;
