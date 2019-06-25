@@ -229,6 +229,7 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 
 	if (err) {
 		re_printf("http error: %m\n", err);
+		cli->saved_err = err;
 		client_close(cli, err);
 		return;
 	}
@@ -238,6 +239,7 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 	else if (msg->scode >= 300) {
 		re_printf("request failed (%u %r)\n",
 			  msg->scode, &msg->reason);
+		cli->saved_scode = msg->scode;
 		client_close(cli, EPROTO);
 		return;
 	}

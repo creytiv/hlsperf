@@ -23,6 +23,8 @@ struct client {
 	uint64_t ts_conn;
 	size_t bytes;
 	bool connected;
+	int saved_err;
+	uint16_t saved_scode;
 	client_error_h *errorh;
 	void *arg;
 };

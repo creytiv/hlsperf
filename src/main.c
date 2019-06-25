@@ -42,8 +42,7 @@ static int dns_init(struct dnsc **dnsc)
 
 static void client_error_handler(int err, void *arg)
 {
-	DEBUG_WARNING("client error (%m) -- stop\n", err);
-	re_cancel();
+	DEBUG_WARNING("client error (%m)\n", err);
 }
 
 
@@ -93,6 +92,11 @@ static void show_summary(struct client * const *cliv, size_t clic)
 			conn_avg += conn_time;
 			conn_max = max(conn_time, conn_max);
 		}
+
+		if (cli->saved_err)
+			re_printf("%u: %m\n", i, cli->saved_err);
+		if (cli->saved_scode)
+			re_printf("%u: %u\n", i, cli->saved_scode);
 	}
 
 	if (n_connected)
