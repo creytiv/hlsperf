@@ -319,8 +319,6 @@ int client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri,
 	cli->errorh = errorh;
 	cli->arg = arg;
 
-	re_printf("uri path = '%r'\n", &cli->path);
-
  out:
 	if (err)
 		mem_deref(cli);
@@ -335,8 +333,6 @@ int client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri,
 static int load_playlist(struct client *cli)
 {
 	int err;
-
-	re_printf("load playlist: %s\n", cli->uri);
 
 	cli->ts_start = tmr_jiffies();
 
@@ -364,11 +360,10 @@ int client_start(struct client *cli)
 {
 	uint32_t delay = 500 + rand_u32() % 500;
 
-	re_printf("start: %s (delay=%ums)\n", cli->uri, delay);
+	if (!cli)
+		return EINVAL;
 
 	tmr_start(&cli->tmr_load, delay, tmr_load_handler, cli);
 
 	return 0;
 }
-
-
