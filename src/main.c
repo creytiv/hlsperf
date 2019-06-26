@@ -120,7 +120,7 @@ static int stats_print(struct re_printf *pf, const struct stats *stats)
 		return 0;
 
 	if (stats->count)
-		return re_hprintf(pf, "%lli/%lli/%lli ms",
+		return re_hprintf(pf, "%lli/%lli/%lli",
 				  stats->min,
 				  stats_average(stats),
 				  stats->max);
@@ -131,12 +131,13 @@ static int stats_print(struct re_printf *pf, const struct stats *stats)
 
 static void show_summary(struct client * const *cliv, size_t clic)
 {
-	struct stats stats_conn, stats_media;
+	struct stats stats_conn, stats_media, stats_bitrate;
 	size_t n_connected = 0;
 	size_t i;
 
 	stats_init(&stats_conn);
 	stats_init(&stats_media);
+	stats_init(&stats_bitrate);
 
 	for (i=0; i<clic; i++) {
 
@@ -154,18 +155,25 @@ static void show_summary(struct client * const *cliv, size_t clic)
 
 		if (cli->media_count) {
 			int64_t media_time;
+			int64_t bitrate;
 
 			media_time = cli->media_time_acc / cli->media_count;
 
+			bitrate = cli->bitrate_acc / cli->media_count;
+
 			stats_update(&stats_media, media_time);
+
+			stats_update(&stats_bitrate, bitrate);
 		}
 	}
 
 	re_printf("- - - dashperf summary - - -\n");
 	re_printf("total sessions:  %zu\n", clic);
 	re_printf("connected:       %zu\n", n_connected);
-	re_printf("conn min/avg/max:   %H\n", stats_print, &stats_conn);
-	re_printf("media min/avg/max:  %H\n", stats_print, &stats_media);
+	re_printf("conn min/avg/max:   %H ms\n", stats_print, &stats_conn);
+	re_printf("media min/avg/max:  %H ms\n", stats_print, &stats_media);
+	re_printf("peak bitrate min/avg/max:  %H bps\n",
+		  stats_print, &stats_bitrate);
 	re_printf("- - - - - - - - - - -  - - -\n");
 }
 

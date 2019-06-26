@@ -31,6 +31,8 @@ struct client {
 	uint64_t media_time_acc;
 	unsigned media_count;
 
+	uint64_t bitrate_acc;
+
 	client_error_h *errorh;
 	void *arg;
 };

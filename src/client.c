@@ -259,6 +259,7 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 
 		uint32_t delay;
 		int64_t media_time;
+		double bitrate;
 
 		cli->ts_media_resp = tmr_jiffies();
 
@@ -269,6 +270,10 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 		++cli->media_count;
 
 		cli->bytes += msg->clen;
+
+		bitrate = (double)(cli->bytes * 8000) / media_time;
+
+		cli->bitrate_acc += bitrate;
 
 		delay = DURATION*1000 + rand_u32() % 1000;
 
