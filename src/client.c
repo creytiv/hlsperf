@@ -358,7 +358,7 @@ static void tmr_load_handler(void *data)
 
 int client_start(struct client *cli)
 {
-	uint32_t delay = 500 + rand_u32() % 500;
+	uint32_t delay = rand_u32() % 5000;
 
 	if (!cli)
 		return EINVAL;
