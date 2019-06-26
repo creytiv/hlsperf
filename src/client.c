@@ -35,6 +35,7 @@ static void destructor(void *data)
 }
 
 
+#if 0
 static void print_summary(struct client *cli)
 {
 	double dur;
@@ -48,6 +49,7 @@ static void print_summary(struct client *cli)
 		  cli->bytes, dur, bits / dur);
 	re_printf("- - - - - - - - - -\n");
 }
+#endif
 
 
 static int get_item(struct client *cli, const char *uri)
@@ -119,10 +121,12 @@ static void handle_line(struct client *cli, const struct pl *line)
 }
 
 
+#if 0
 static void complete(struct client *cli)
 {
 	print_summary(cli);
 }
+#endif
 
 
 static void start_player(struct client *cli)
@@ -136,7 +140,6 @@ static void start_player(struct client *cli)
 	mf = list_ledata(list_head(&cli->playlist));
 	if (!mf) {
 		re_printf("playlist is empty!\n");
-		complete(cli);
 		return;
 	}
 
@@ -145,6 +148,8 @@ static void start_player(struct client *cli)
 	err = re_sdprintf(&uri, "%r%s", &cli->path, mf->filename);
 	if (err)
 		return;
+
+	cli->ts_media_req = tmr_jiffies();
 
 	get_item(cli, uri);
 
@@ -253,6 +258,15 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 	else if (msg_ctype_cmp(&msg->ctyp, "video", "mp4")) {
 
 		uint32_t delay;
+		int64_t media_time;
+
+		cli->ts_media_resp = tmr_jiffies();
+
+		media_time = cli->ts_media_resp - cli->ts_media_req;
+
+
+		cli->media_time_acc += media_time;
+		++cli->media_count;
 
 		cli->bytes += msg->clen;
 

@@ -4,6 +4,7 @@
  * Copyright (C) 2010 Creytiv.com
  */
 
+#include <string.h>
 #include <stdlib.h>
 #include <getopt.h>
 #include <re.h>
@@ -72,43 +73,99 @@ static void usage(void)
 }
 
 
+struct stats {
+	int64_t min;
+	int64_t max;
+	int64_t acc;
+	unsigned count;
+};
+
+
+static void stats_init(struct stats *stats)
+{
+	memset(stats, 0, sizeof(*stats));
+}
+
+
+static void stats_update(struct stats *stats, int64_t val)
+{
+	if (stats->count) {
+
+		stats->min = min(val, stats->min);
+		stats->max = max(val, stats->max);
+		stats->acc += val;
+		++stats->count;
+	}
+	else {
+		stats->min = val;
+		stats->max = val;
+		stats->acc = val;
+		stats->count = 1;
+	}
+}
+
+
+static int64_t stats_average(const struct stats *stats)
+{
+	if (stats->count)
+		return stats->acc / stats->count;
+	else
+		return -1;
+}
+
+
+static int stats_print(struct re_printf *pf, const struct stats *stats)
+{
+	if (!stats)
+		return 0;
+
+	if (stats->count)
+		return re_hprintf(pf, "%lli/%lli/%lli ms",
+				  stats->min,
+				  stats_average(stats),
+				  stats->max);
+	else
+		return re_hprintf(pf, "(not set)");
+}
+
+
 static void show_summary(struct client * const *cliv, size_t clic)
 {
+	struct stats stats_conn, stats_media;
 	size_t n_connected = 0;
 	size_t i;
-	int64_t conn_min=99999999, conn_avg = 0, conn_max = -1;
+
+	stats_init(&stats_conn);
+	stats_init(&stats_media);
 
 	for (i=0; i<clic; i++) {
 
 		const struct client *cli = cliv[i];
+		int64_t conn_time;
 
-		if (cliv[i]->connected) {
+		if (!cliv[i]->connected)
+			continue;
 
-			int64_t conn_time = cli->ts_conn - cli->ts_start;
+		++n_connected;
 
-			++n_connected;
+		conn_time = cli->ts_conn - cli->ts_start;
 
-			conn_min = min(conn_time, conn_min);
-			conn_avg += conn_time;
-			conn_max = max(conn_time, conn_max);
+		stats_update(&stats_conn, conn_time);
+
+		if (cli->media_count) {
+			int64_t media_time;
+
+			media_time = cli->media_time_acc / cli->media_count;
+
+			stats_update(&stats_media, media_time);
 		}
-
-		if (cli->saved_err)
-			re_printf("%u: error %m\n", i, cli->saved_err);
-		if (cli->saved_scode)
-			re_printf("%u: scode %u\n", i, cli->saved_scode);
 	}
-
-	if (n_connected)
-		conn_avg /= n_connected;
-	else
-		conn_avg = -1;
 
 	re_printf("- - - dashperf summary - - -\n");
 	re_printf("total sessions:  %zu\n", clic);
 	re_printf("connected:       %zu\n", n_connected);
-	re_printf("min/avg/max:     %lli/%lli/%lli ms\n",
-		  conn_min, conn_avg, conn_max);
+	re_printf("conn min/avg/max:   %H\n", stats_print, &stats_conn);
+	re_printf("media min/avg/max:  %H\n", stats_print, &stats_media);
 	re_printf("- - - - - - - - - - -  - - -\n");
 }
 

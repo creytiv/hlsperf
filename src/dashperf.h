@@ -25,6 +25,12 @@ struct client {
 	bool connected;
 	int saved_err;
 	uint16_t saved_scode;
+
+	uint64_t ts_media_req;
+	uint64_t ts_media_resp;
+	uint64_t media_time_acc;
+	unsigned media_count;
+
 	client_error_h *errorh;
 	void *arg;
 };
