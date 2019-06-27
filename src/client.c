@@ -76,8 +76,22 @@ static void handle_line(struct client *cli, const struct pl *line)
 	int err;
 
 	/* ignore comment */
-	if (line->p[0] == '#')
+	if (line->p[0] == '#') {
+
+		struct pl pl_dur;
+
+		/* field: #EXTINF:10.000000 */
+		if (0 == re_regex(line->p, line->l,
+				  "EXTINF:[0-9.]+", &pl_dur)) {
+
+			double dur = pl_float(&pl_dur);
+
+			if (dur > 1.0)
+				cli->last_dur = dur;
+		}
+
 		return;
+	}
 
 	if (re_regex(line->p, line->l, "[^.]+.[a-z0-9]+", &file, &ext)) {
 		DEBUG_NOTICE("could not parse line (%r)\n", line);
@@ -111,7 +125,7 @@ static void handle_line(struct client *cli, const struct pl *line)
 
 		pl_strdup(&filename, line);
 
-		mediafile_new(&cli->playlist, filename);
+		mediafile_new(&cli->playlist, filename, cli->last_dur);
 
 		mem_deref(filename);
 	}
@@ -343,6 +357,8 @@ int client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri,
 
 	cli->path.p = uri;
 	cli->path.l = rslash + 1 - uri;
+
+	cli->last_dur = 10.0;
 
 	cli->errorh = errorh;
 	cli->arg = arg;

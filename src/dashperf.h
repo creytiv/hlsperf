@@ -28,6 +28,7 @@ struct client {
 	bool connected;
 	int saved_err;
 	uint16_t saved_scode;
+	double last_dur;
 
 	uint64_t ts_media_req;
 	uint64_t ts_media_resp;
@@ -57,7 +58,8 @@ int client_start(struct client *cli);
 struct mediafile {
 	struct le le;
 	char *filename;
+	double duration;  /* seconds */
 };
 
 
-int mediafile_new(struct list *lst, const char *filename);
+int mediafile_new(struct list *lst, const char *filename, double duration);

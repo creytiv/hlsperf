@@ -23,7 +23,7 @@ static void mediafile_destructor(void *data)
 }
 
 
-int mediafile_new(struct list *lst, const char *filename)
+int mediafile_new(struct list *lst, const char *filename, double duration)
 {
 	struct mediafile *mf;
 	int err;
@@ -38,6 +38,8 @@ int mediafile_new(struct list *lst, const char *filename)
 	err = str_dup(&mf->filename, filename);
 	if (err)
 		goto out;
+
+	mf->duration = duration;
 
 	list_append(lst, &mf->le, mf);
 
