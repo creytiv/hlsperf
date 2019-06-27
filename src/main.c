@@ -275,9 +275,12 @@ int main(int argc, char *argv[])
 	re_printf("Hasta la vista\n");
 
  out:
-	show_summary(cliv, num_sess);
-	for (i=0; i<num_sess; i++) {
-		mem_deref(cliv[i]);
+	if (cliv) {
+		show_summary(cliv, num_sess);
+
+		for (i=0; i<num_sess; i++) {
+			mem_deref(cliv[i]);
+		}
 	}
 	mem_deref(cliv);
 	mem_deref(dnsc);
