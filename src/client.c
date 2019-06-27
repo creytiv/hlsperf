@@ -27,6 +27,8 @@ static void destructor(void *data)
 {
 	struct client *cli = data;
 
+	cli->terminated = true;
+
 	tmr_cancel(&cli->tmr_play);
 	tmr_cancel(&cli->tmr_load);
 	list_flush(&cli->playlist);
@@ -212,6 +214,7 @@ static void tmr_handler(void *data)
 
 static void client_close(struct client *cli, int err)
 {
+	cli->terminated = true;
 	tmr_cancel(&cli->tmr_play);
 	tmr_cancel(&cli->tmr_load);
 	cli->cli = mem_deref(cli->cli);
@@ -226,6 +229,9 @@ static void client_close(struct client *cli, int err)
 static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 {
 	struct client *cli = arg;
+
+	if (cli->terminated)
+		return;
 
 	if (err) {
 		re_printf("http error: %m\n", err);

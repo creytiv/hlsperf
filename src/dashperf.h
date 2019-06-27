@@ -36,6 +36,7 @@ struct client {
 
 	uint64_t bitrate_acc;
 
+	bool terminated;
 	client_error_h *errorh;
 	void *arg;
 };
