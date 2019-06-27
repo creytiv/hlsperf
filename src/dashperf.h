@@ -9,7 +9,10 @@
  * Client
  */
 
-typedef void (client_error_h)(int err, void *arg);
+struct client;
+
+
+typedef void (client_error_h)(struct client *cli, int err, void *arg);
 
 struct client {
 	struct http_cli *cli;

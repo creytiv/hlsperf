@@ -41,9 +41,12 @@ static int dns_init(struct dnsc **dnsc)
 }
 
 
-static void client_error_handler(int err, void *arg)
+static void client_error_handler(struct client *cli, int err, void *arg)
 {
 	DEBUG_WARNING("client error (%m)\n", err);
+
+	if (cli->saved_scode == 404)
+		re_cancel();
 }
 
 

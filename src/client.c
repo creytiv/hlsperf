@@ -204,6 +204,8 @@ static void tmr_handler(void *data)
 {
 	struct client *cli = data;
 
+	load_playlist(cli);
+
 	start_player(cli);
 }
 
@@ -215,7 +217,7 @@ static void client_close(struct client *cli, int err)
 	cli->cli = mem_deref(cli->cli);
 
 	if (cli->errorh)
-		cli->errorh(err, cli->arg);
+		cli->errorh(cli, err, cli->arg);
 
 	cli->errorh = NULL;
 }
@@ -253,6 +255,9 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 
 		cli->connected = true;
 
+		/* Flush the media playlist */
+		list_flush(&cli->playlist);
+
 		handle_hls_playlist(cli, msg);
 	}
 	else if (msg_ctype_cmp(&msg->ctyp, "video", "mp4")) {
@@ -276,8 +281,6 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 		cli->bitrate_acc += bitrate;
 
 		delay = DURATION*1000 + rand_u32() % 1000;
-
-		mem_deref(list_ledata(cli->playlist.head));
 
 		tmr_start(&cli->tmr_play, delay, tmr_handler, cli);
 	}
@@ -353,7 +356,8 @@ static int load_playlist(struct client *cli)
 {
 	int err;
 
-	cli->ts_start = tmr_jiffies();
+	if (!cli->ts_start)
+		cli->ts_start = tmr_jiffies();
 
 	err = http_request(NULL, cli->cli, "GET", cli->uri,
 			   http_resp_handler, NULL, cli, NULL);
