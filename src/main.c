@@ -77,9 +77,9 @@ static void usage(void)
 
 
 struct stats {
-	int64_t min;
-	int64_t max;
-	int64_t acc;
+	double min;
+	double max;
+	double acc;
 	unsigned count;
 };
 
@@ -90,7 +90,7 @@ static void stats_init(struct stats *stats)
 }
 
 
-static void stats_update(struct stats *stats, int64_t val)
+static void stats_update(struct stats *stats, double val)
 {
 	if (stats->count) {
 
@@ -108,10 +108,10 @@ static void stats_update(struct stats *stats, int64_t val)
 }
 
 
-static int64_t stats_average(const struct stats *stats)
+static double stats_average(const struct stats *stats)
 {
 	if (stats->count)
-		return stats->acc / stats->count;
+		return stats->acc / (double)stats->count;
 	else
 		return -1;
 }
@@ -123,7 +123,7 @@ static int stats_print(struct re_printf *pf, const struct stats *stats)
 		return 0;
 
 	if (stats->count)
-		return re_hprintf(pf, "%lli/%lli/%lli",
+		return re_hprintf(pf, "%.1f/%.1f/%.1f",
 				  stats->min,
 				  stats_average(stats),
 				  stats->max);
@@ -158,11 +158,12 @@ static void show_summary(struct client * const *cliv, size_t clic)
 
 		if (cli->media_count) {
 			int64_t media_time;
-			int64_t bitrate;
+			double bitrate;
 
 			media_time = cli->media_time_acc / cli->media_count;
 
-			bitrate = cli->bitrate_acc / cli->media_count;
+			bitrate = (double)cli->bitrate_acc / cli->media_count;
+			bitrate *= .000001;
 
 			stats_update(&stats_media, media_time);
 
@@ -175,7 +176,7 @@ static void show_summary(struct client * const *cliv, size_t clic)
 	re_printf("connected:       %zu\n", n_connected);
 	re_printf("conn min/avg/max:   %H ms\n", stats_print, &stats_conn);
 	re_printf("media min/avg/max:  %H ms\n", stats_print, &stats_media);
-	re_printf("peak bitrate min/avg/max:  %H bps\n",
+	re_printf("peak bitrate min/avg/max:  %H Mbps\n",
 		  stats_print, &stats_bitrate);
 	re_printf("- - - - - - - - - - -  - - -\n");
 }
