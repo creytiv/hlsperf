@@ -136,7 +136,7 @@ static void show_summary(struct client * const *cliv, size_t clic)
 {
 	struct stats stats_conn, stats_media, stats_bitrate;
 	size_t n_connected = 0;
-	size_t i;
+	size_t i, j;
 
 	stats_init(&stats_conn);
 	stats_init(&stats_media);
@@ -156,18 +156,28 @@ static void show_summary(struct client * const *cliv, size_t clic)
 
 		stats_update(&stats_conn, conn_time);
 
-		if (cli->media_count) {
-			int64_t media_time;
-			double bitrate;
+		for (j=0; j<ARRAY_SIZE(cli->mplv); j++) {
 
-			media_time = cli->media_time_acc / cli->media_count;
+			struct media_playlist *mpl = cli->mplv[j];
 
-			bitrate = (double)cli->bitrate_acc / cli->media_count;
-			bitrate *= .000001;
+			if (!mpl)
+				continue;
 
-			stats_update(&stats_media, media_time);
+			if (mpl->media_count) {
+				int64_t media_time;
+				double bitrate;
 
-			stats_update(&stats_bitrate, bitrate);
+				media_time = mpl->media_time_acc
+					/ mpl->media_count;
+
+				bitrate = (double)mpl->bitrate_acc
+					/ mpl->media_count;
+				bitrate *= .000001;
+
+				stats_update(&stats_media, media_time);
+
+				stats_update(&stats_bitrate, bitrate);
+			}
 		}
 	}
 

@@ -14,11 +14,6 @@
 #include <re_dbg.h>
 
 
-enum {
-	DURATION = 10
-};
-
-
 static int load_playlist(struct client *cli);
 static void http_resp_handler(int err, const struct http_msg *msg, void *arg);
 
@@ -26,68 +21,15 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg);
 static void destructor(void *data)
 {
 	struct client *cli = data;
+	unsigned i;
 
 	cli->terminated = true;
 
-	tmr_cancel(&cli->tmr_play);
 	tmr_cancel(&cli->tmr_load);
-	list_flush(&cli->playlist);
+	for (i=0; i<ARRAY_SIZE(cli->mplv); i++)
+		mem_deref(cli->mplv[i]);
 	mem_deref(cli->cli);
 	mem_deref(cli->uri);
-}
-
-
-#if 0
-static void print_summary(struct client *cli)
-{
-	double dur;
-	size_t bits = cli->bytes * 8;
-
-	dur = (double)(tmr_jiffies() - cli->ts_start) * .001;
-
-	re_printf("- - - summary - - -\n");
-	re_printf("summary: downloaded %zu bytes in %.1f seconds"
-		  " (average %.1f bits/s)\n",
-		  cli->bytes, dur, bits / dur);
-	re_printf("- - - - - - - - - -\n");
-}
-#endif
-
-
-static int http_data_handler(const uint8_t *buf, size_t size,
-			     const struct http_msg *msg, void *arg)
-{
-	return 0;
-}
-
-
-static int get_media_file(struct client *cli, const char *uri)
-{
-	int err;
-
-	err = http_request(NULL, cli->cli, "GET", uri,
-			   http_resp_handler, http_data_handler, cli, NULL);
-	if (err) {
-		re_printf("http request failed (%m)\n", err);
-		return err;
-	}
-
-	return 0;
-}
-
-
-static int get_item(struct client *cli, const char *uri)
-{
-	int err;
-
-	err = http_request(NULL, cli->cli, "GET", uri,
-			   http_resp_handler, NULL, cli, NULL);
-	if (err) {
-		re_printf("http request failed (%m)\n", err);
-		return err;
-	}
-
-	return 0;
 }
 
 
@@ -95,7 +37,7 @@ static void handle_line(struct client *cli, const struct pl *line)
 {
 	struct pl file, ext;
 	char *uri = NULL;
-	int err;
+	int err = 0;
 
 	/* ignore comment */
 	if (line->p[0] == '#') {
@@ -106,10 +48,7 @@ static void handle_line(struct client *cli, const struct pl *line)
 		if (0 == re_regex(line->p, line->l,
 				  "EXTINF:[0-9.]+", &pl_dur)) {
 
-			double dur = pl_float(&pl_dur);
-
-			if (dur > 1.0)
-				cli->last_dur = dur;
+			DEBUG_WARNING("unexpected field (%r)\n", line);
 		}
 
 		return;
@@ -122,6 +61,32 @@ static void handle_line(struct client *cli, const struct pl *line)
 
 	if (0 == pl_strcasecmp(&ext, "m3u8")) {
 
+		struct pl media_ix;
+
+		re_printf(".... m3u8:  file = '%r'\n", &file);
+
+		if (0 == re_regex(file.p, file.l, "media_[0-9]+", &media_ix)) {
+
+			char buf[256];
+			unsigned ix = pl_u32(&media_ix);
+
+			re_printf("index: %u\n", pl_u32(&media_ix));
+
+			re_snprintf(buf, sizeof(buf), "%r.%r", &file, &ext);
+
+			err = playlist_new(&cli->mplv[ix], cli, buf);
+			if (err)
+				goto out;
+
+			err = playlist_start(cli->mplv[ix]);
+			if (err)
+				goto out;
+
+		}
+		else {
+			DEBUG_WARNING("m3u8 file not handled (%r)\n", &file);
+		}
+
 		if (cli->slid == 0) {
 
 			struct pl slid;
@@ -132,64 +97,14 @@ static void handle_line(struct client *cli, const struct pl *line)
 				cli->slid = pl_u32(&slid);
 			}
 		}
-
-		/* recurse into next playlist */
-		err = re_sdprintf(&uri, "%r%r", &cli->path, line);
-		if (err)
-			return;
-
-		get_item(cli, uri);
-	}
-	else if (0 == pl_strcasecmp(&ext, "m4s") ||
-		 0 == pl_strcasecmp(&ext, "mp4")) {
-
-		char *filename;
-
-		pl_strdup(&filename, line);
-
-		mediafile_new(&cli->playlist, filename, cli->last_dur);
-
-		mem_deref(filename);
 	}
 	else {
 		DEBUG_NOTICE("hls: unknown extension: %r\n", &ext);
 	}
 
-	mem_deref(uri);
-}
-
-
-#if 0
-static void complete(struct client *cli)
-{
-	print_summary(cli);
-}
-#endif
-
-
-static void start_player(struct client *cli)
-{
-	struct mediafile *mf;
-	char *uri;
-	int err;
-
-	/* get the first playlist item */
-
-	mf = list_ledata(list_head(&cli->playlist));
-	if (!mf) {
-		re_printf("playlist is empty!\n");
-		return;
-	}
-
-	/* download the media file */
-
-	err = re_sdprintf(&uri, "%r%s", &cli->path, mf->filename);
+ out:
 	if (err)
-		return;
-
-	cli->ts_media_req = tmr_jiffies();
-
-	get_media_file(cli, uri);
+		re_printf("parse error\n");
 
 	mem_deref(uri);
 }
@@ -198,12 +113,6 @@ static void start_player(struct client *cli)
 static int handle_hls_playlist(struct client *cli, const struct http_msg *msg)
 {
 	struct pl pl;
-
-#if 0
-	re_printf("- - - - - - - - - - \n");
-	re_printf("%b\n", mbuf_buf(msg->mb), mbuf_get_left(msg->mb));
-	re_printf("- - - - - - - - - - \n");
-#endif
 
 	pl_set_mbuf(&pl, msg->mb);
 
@@ -224,34 +133,16 @@ static int handle_hls_playlist(struct client *cli, const struct http_msg *msg)
 		pl_advance(&pl, line.l + 1);
 	}
 
-#if 0
-	re_printf("hls playlist done, %u entries, slid=%u\n",
-		  list_count(&cli->playlist), cli->slid);
-#endif
-
-	if (!list_isempty(&cli->playlist)) {
-
-		start_player(cli);
-	}
-
 	return 0;
 }
 
 
-static void tmr_handler(void *data)
+void client_close(struct client *cli, int err)
 {
-	struct client *cli = data;
+	if (!cli)
+		return;
 
-	load_playlist(cli);
-
-	start_player(cli);
-}
-
-
-static void client_close(struct client *cli, int err)
-{
 	cli->terminated = true;
-	tmr_cancel(&cli->tmr_play);
 	tmr_cancel(&cli->tmr_load);
 	cli->cli = mem_deref(cli->cli);
 
@@ -297,34 +188,7 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 
 		cli->connected = true;
 
-		/* Flush the media playlist */
-		list_flush(&cli->playlist);
-
 		handle_hls_playlist(cli, msg);
-	}
-	else if (msg_ctype_cmp(&msg->ctyp, "video", "mp4")) {
-
-		uint32_t delay;
-		int64_t media_time;
-		double bitrate;
-
-		cli->ts_media_resp = tmr_jiffies();
-
-		media_time = cli->ts_media_resp - cli->ts_media_req;
-
-
-		cli->media_time_acc += media_time;
-		++cli->media_count;
-
-		cli->bytes += msg->clen;
-
-		bitrate = (double)(cli->bytes * 8000) / media_time;
-
-		cli->bitrate_acc += bitrate;
-
-		delay = DURATION*1000 + rand_u32() % 1000;
-
-		tmr_start(&cli->tmr_play, delay, tmr_handler, cli);
 	}
 	else {
 		DEBUG_NOTICE("unknown content-type: %r/%r\n",
@@ -380,8 +244,6 @@ int client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri,
 	cli->path.p = uri;
 	cli->path.l = rslash + 1 - uri;
 
-	cli->last_dur = 10.0;
-
 	cli->errorh = errorh;
 	cli->arg = arg;
 
@@ -395,7 +257,7 @@ int client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri,
 }
 
 
-/* Load or Re-load playlist */
+/* Load master playlist */
 static int load_playlist(struct client *cli)
 {
 	int err;
@@ -409,7 +271,6 @@ static int load_playlist(struct client *cli)
 		re_printf("http request failed (%m)\n", err);
 		return err;
 	}
-
 
 	return 0;
 }

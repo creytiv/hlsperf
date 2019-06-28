@@ -31,6 +31,8 @@ int mediafile_new(struct list *lst, const char *filename, double duration)
 	if (!lst || !filename)
 		return EINVAL;
 
+	re_printf(".... new mediafile: %s\n", filename);
+
 	mf = mem_zalloc(sizeof(*mf), mediafile_destructor);
 	if (!mf)
 		return ENOMEM;
@@ -48,4 +50,38 @@ int mediafile_new(struct list *lst, const char *filename, double duration)
 		mem_deref(mf);
 
 	return err;
+}
+
+
+struct mediafile *mediafile_find(const struct list *lst, const char *filename)
+{
+	struct le *le;
+
+	le = list_head(lst);
+	while (le) {
+		struct mediafile *mf = le->data;
+		le = le->next;
+
+		if (0 == str_cmp(filename, mf->filename))
+			return mf;
+	}
+
+	return NULL;
+}
+
+
+struct mediafile *mediafile_next(const struct list *lst)
+{
+	struct le *le;
+
+	le = list_head(lst);
+	while (le) {
+		struct mediafile *mf = le->data;
+		le = le->next;
+
+		if (!mf->played)
+			return mf;
+	}
+
+	return NULL;
 }
