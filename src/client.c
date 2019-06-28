@@ -54,6 +54,28 @@ static void print_summary(struct client *cli)
 #endif
 
 
+static int http_data_handler(const uint8_t *buf, size_t size,
+			     const struct http_msg *msg, void *arg)
+{
+	return 0;
+}
+
+
+static int get_media_file(struct client *cli, const char *uri)
+{
+	int err;
+
+	err = http_request(NULL, cli->cli, "GET", uri,
+			   http_resp_handler, http_data_handler, cli, NULL);
+	if (err) {
+		re_printf("http request failed (%m)\n", err);
+		return err;
+	}
+
+	return 0;
+}
+
+
 static int get_item(struct client *cli, const char *uri)
 {
 	int err;
@@ -167,7 +189,7 @@ static void start_player(struct client *cli)
 
 	cli->ts_media_req = tmr_jiffies();
 
-	get_item(cli, uri);
+	get_media_file(cli, uri);
 
 	mem_deref(uri);
 }
