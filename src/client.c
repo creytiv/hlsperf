@@ -26,16 +26,59 @@ static void destructor(void *data)
 	cli->terminated = true;
 
 	tmr_cancel(&cli->tmr_load);
-	for (i=0; i<ARRAY_SIZE(cli->mplv); i++)
+	for (i=0; i<ARRAY_SIZE(cli->mplv); i++) {
+
+		if (cli->mplv[i]) {
+			re_printf("... closing playlist: %s\n",
+				  cli->mplv[i]->filename);
+		}
+
 		mem_deref(cli->mplv[i]);
+	}
+
 	mem_deref(cli->cli);
 	mem_deref(cli->uri);
 }
 
 
+static int add_playlist(struct client *cli, const char *filename)
+{
+	struct pl media_ix;
+	int err = 0;
+
+	re_printf("add_playlist (%s)\n", filename);
+
+	if (0 == re_regex(filename, str_len(filename),
+			  "media_[0-9]+", &media_ix)) {
+
+		unsigned ix = pl_u32(&media_ix);
+
+		if (ix >= ARRAY_SIZE(cli->mplv)) {
+			re_printf("index out of range (%u >= %zu)\n",
+				  ix, ARRAY_SIZE(cli->mplv));
+			return ERANGE;
+		}
+
+		err = playlist_new(&cli->mplv[ix], cli, filename);
+		if (err)
+			goto out;
+
+		err = playlist_start(cli->mplv[ix]);
+		if (err)
+			goto out;
+	}
+	else {
+		DEBUG_WARNING("m3u8 file not handled (%s)\n", filename);
+	}
+
+ out:
+	return err;
+}
+
+
 static void handle_line(struct client *cli, const struct pl *line)
 {
-	struct pl file, ext;
+	struct pl file, ext, val;
 	char *uri = NULL;
 	int err = 0;
 
@@ -51,6 +94,28 @@ static void handle_line(struct client *cli, const struct pl *line)
 			DEBUG_WARNING("unexpected field (%r)\n", line);
 		}
 
+		if (0 == re_regex(line->p, line->l,
+				  "#EXT-X-MEDIA:[^]+", &val)) {
+
+			struct pl muri;
+
+			re_printf("---> got EXT-X-MEDIA: %r\n", &val);
+
+			if (0 == re_regex(val.p, val.l,
+					  "URI=\"[^?]+", &muri)) {
+
+				char buf[256];
+
+				re_printf("---> uri = '%r'\n", &muri);
+
+				pl_strcpy(&muri, buf, sizeof(buf));
+
+				err = add_playlist(cli, buf);
+				if (err)
+					goto out;
+			}
+		}
+
 		return;
 	}
 
@@ -61,31 +126,15 @@ static void handle_line(struct client *cli, const struct pl *line)
 
 	if (0 == pl_strcasecmp(&ext, "m3u8")) {
 
-		struct pl media_ix;
+		char buf[256];
 
 		re_printf(".... m3u8:  file = '%r'\n", &file);
 
-		if (0 == re_regex(file.p, file.l, "media_[0-9]+", &media_ix)) {
+		re_snprintf(buf, sizeof(buf), "%r.%r", &file, &ext);
 
-			char buf[256];
-			unsigned ix = pl_u32(&media_ix);
-
-			re_printf("index: %u\n", pl_u32(&media_ix));
-
-			re_snprintf(buf, sizeof(buf), "%r.%r", &file, &ext);
-
-			err = playlist_new(&cli->mplv[ix], cli, buf);
-			if (err)
-				goto out;
-
-			err = playlist_start(cli->mplv[ix]);
-			if (err)
-				goto out;
-
-		}
-		else {
-			DEBUG_WARNING("m3u8 file not handled (%r)\n", &file);
-		}
+		err = add_playlist(cli, buf);
+		if (err)
+			goto out;
 
 		if (cli->slid == 0) {
 
@@ -104,7 +153,7 @@ static void handle_line(struct client *cli, const struct pl *line)
 
  out:
 	if (err)
-		re_printf("parse error\n");
+		re_printf("WARNING: parse error\n");
 
 	mem_deref(uri);
 }
