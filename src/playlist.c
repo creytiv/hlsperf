@@ -287,8 +287,6 @@ static void timeout_reload(void *data)
 {
 	struct media_playlist *pl = data;
 
-	re_printf("reload %s\n", pl->filename);
-
 	tmr_start(&pl->tmr_reload, RELOAD_INTERVAL*1000, timeout_reload, pl);
 
 	load_playlist(pl);
@@ -300,8 +298,6 @@ int playlist_new(struct media_playlist **plp, const struct client *cli,
 {
 	struct media_playlist *pl;
 	int err;
-
-	re_printf(".... new media playlist: %s\n", filename);
 
 	pl = mem_zalloc(sizeof(*pl), destructor);
 

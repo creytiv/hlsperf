@@ -123,8 +123,6 @@ static void handle_line(struct client *cli, const struct pl *line)
 
 		char buf[256];
 
-		re_printf(".... m3u8:  file = '%r'\n", &file);
-
 		re_snprintf(buf, sizeof(buf), "%r", line);
 
 		err = add_playlist(cli, buf);
