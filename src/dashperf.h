@@ -18,7 +18,6 @@ struct client {
 	struct http_cli *cli;
 	char *uri;
 	struct pl path;
-	//struct list playlist;  /* struct mediafile */
 	struct media_playlist *mplv[2];
 	uint32_t slid;
 	struct tmr tmr_load;
@@ -37,9 +36,9 @@ struct client {
 struct client;
 
 
-int client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri,
-		 client_error_h *errorh, void *arg);
-int client_start(struct client *cli);
+int  client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri,
+		  client_error_h *errorh, void *arg);
+int  client_start(struct client *cli);
 void client_close(struct client *cli, int err);
 
 
