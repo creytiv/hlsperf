@@ -102,7 +102,7 @@ static void handle_line(struct client *cli, const struct pl *line)
 			re_printf("---> got EXT-X-MEDIA: %r\n", &val);
 
 			if (0 == re_regex(val.p, val.l,
-					  "URI=\"[^?]+", &muri)) {
+					  "URI=\"[^\"]+\"", &muri)) {
 
 				char buf[256];
 
@@ -130,7 +130,7 @@ static void handle_line(struct client *cli, const struct pl *line)
 
 		re_printf(".... m3u8:  file = '%r'\n", &file);
 
-		re_snprintf(buf, sizeof(buf), "%r.%r", &file, &ext);
+		re_snprintf(buf, sizeof(buf), "%r", line);
 
 		err = add_playlist(cli, buf);
 		if (err)
