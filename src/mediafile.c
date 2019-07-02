@@ -31,8 +31,6 @@ int mediafile_new(struct list *lst, const char *filename, double duration)
 	if (!lst || !filename)
 		return EINVAL;
 
-	re_printf(".... new mediafile: %s\n", filename);
-
 	mf = mem_zalloc(sizeof(*mf), mediafile_destructor);
 	if (!mf)
 		return ENOMEM;

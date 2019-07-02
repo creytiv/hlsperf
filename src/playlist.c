@@ -96,8 +96,6 @@ static int get_media_file(struct media_playlist *mpl, struct mediafile *mf,
 {
 	int err;
 
-	re_printf("GET MEDIA: %s\n", uri);
-
 	err = http_request(NULL, mpl->cli->cli, "GET", uri,
 			   media_http_resp_handler,
 			   http_data_handler, mpl, NULL);
