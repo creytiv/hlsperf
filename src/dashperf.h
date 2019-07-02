@@ -75,6 +75,7 @@ struct media_playlist {
 	struct http_req *req;
 	struct tmr tmr_play;
 	double last_dur;
+	bool terminated;
 
 	size_t bytes;
 	uint64_t ts_media_req;

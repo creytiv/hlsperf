@@ -46,8 +46,14 @@ static void media_http_resp_handler(int err, const struct http_msg *msg,
 {
 	struct media_playlist *mpl = arg;
 
+	if (mpl->terminated)
+		return;
+
 	if (err) {
 		re_printf("playlist: http error: %m\n", err);
+		mpl->terminated = true;
+		tmr_cancel(&mpl->tmr_play);
+		tmr_cancel(&mpl->tmr_reload);
 		return;
 	}
 

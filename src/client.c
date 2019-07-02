@@ -28,11 +28,6 @@ static void destructor(void *data)
 	tmr_cancel(&cli->tmr_load);
 	for (i=0; i<ARRAY_SIZE(cli->mplv); i++) {
 
-		if (cli->mplv[i]) {
-			re_printf("... closing playlist: %s\n",
-				  cli->mplv[i]->filename);
-		}
-
 		mem_deref(cli->mplv[i]);
 	}
 
