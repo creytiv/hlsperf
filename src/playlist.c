@@ -15,7 +15,7 @@
 
 
 enum {
-	RELOAD_INTERVAL = 16
+	RELOAD_INTERVAL = 16  /* seconds */
 };
 
 
@@ -26,11 +26,22 @@ static void destructor(void *data)
 {
 	struct media_playlist *pl = data;
 
+	pl->terminated = true;
+
 	tmr_cancel(&pl->tmr_play);
 	tmr_cancel(&pl->tmr_reload);
 	mem_deref(pl->filename);
 	mem_deref(pl->req);
 	list_flush(&pl->playlist);
+}
+
+
+static void playlist_close(struct media_playlist *mpl, int err)
+{
+	mpl->terminated = true;
+
+	tmr_cancel(&mpl->tmr_play);
+	tmr_cancel(&mpl->tmr_reload);
 }
 
 
@@ -51,9 +62,13 @@ static void media_http_resp_handler(int err, const struct http_msg *msg,
 
 	if (err) {
 		re_printf("playlist: http error: %m\n", err);
-		mpl->terminated = true;
-		tmr_cancel(&mpl->tmr_play);
-		tmr_cancel(&mpl->tmr_reload);
+		playlist_close(mpl, err);
+		return;
+	}
+	else if (msg->scode >= 300) {
+		re_printf("playlist: request failed (%u %r)\n",
+			  msg->scode, &msg->reason);
+		playlist_close(mpl, EPROTO);
 		return;
 	}
 
@@ -223,20 +238,19 @@ static int handle_hls_playlist(struct media_playlist *mpl,
 static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 {
 	struct media_playlist *pl = arg;
-	struct client *cli = (struct client *)pl->cli;
 
 	if (err) {
-		re_printf("http error: %m\n", err);
-		client_close(cli, err);
+		re_printf("playlist: http error: %m\n", err);
+		playlist_close(pl, err);
 		return;
 	}
 
 	if (msg->scode <= 199)
 		return;
 	else if (msg->scode >= 300) {
-		re_printf("request failed (%u %r)\n",
+		re_printf("playlist: request failed (%u %r)\n",
 			  msg->scode, &msg->reason);
-		client_close(cli, EPROTO);
+		playlist_close(pl, EPROTO);
 		return;
 	}
 
@@ -248,8 +262,6 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 		DEBUG_NOTICE("unknown content-type: %r/%r\n",
 			  &msg->ctyp.type, &msg->ctyp.subtype);
 	}
-
-	re_printf("mediafiles: %u\n", list_count(&pl->playlist));
 }
 
 
