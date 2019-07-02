@@ -94,14 +94,10 @@ static void handle_line(struct client *cli, const struct pl *line)
 
 			struct pl muri;
 
-			re_printf("---> got EXT-X-MEDIA: %r\n", &val);
-
 			if (0 == re_regex(val.p, val.l,
 					  "URI=\"[^\"]+\"", &muri)) {
 
 				char buf[256];
-
-				re_printf("---> uri = '%r'\n", &muri);
 
 				pl_strcpy(&muri, buf, sizeof(buf));
 
