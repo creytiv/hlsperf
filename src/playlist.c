@@ -46,6 +46,11 @@ static void media_http_resp_handler(int err, const struct http_msg *msg,
 {
 	struct media_playlist *mpl = arg;
 
+	if (err) {
+		re_printf("playlist: http error: %m\n", err);
+		return;
+	}
+
 	if (msg_ctype_cmp(&msg->ctyp, "video", "mp4")) {
 
 		int64_t media_time;
