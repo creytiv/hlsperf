@@ -41,8 +41,6 @@ static int add_playlist(struct client *cli, const char *filename)
 	struct pl media_ix;
 	int err = 0;
 
-	re_printf("add_playlist (%s)\n", filename);
-
 	if (0 == re_regex(filename, str_len(filename),
 			  "media_[0-9]+", &media_ix)) {
 
