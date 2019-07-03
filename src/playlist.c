@@ -48,6 +48,8 @@ static void playlist_close(struct media_playlist *mpl, int err)
 static int http_data_handler(const uint8_t *buf, size_t size,
 			     const struct http_msg *msg, void *arg)
 {
+	/* ignore data */
+
 	return 0;
 }
 
@@ -80,7 +82,6 @@ static void media_http_resp_handler(int err, const struct http_msg *msg,
 		mpl->ts_media_resp = tmr_jiffies();
 
 		media_time = mpl->ts_media_resp - mpl->ts_media_req;
-
 
 		mpl->media_time_acc += media_time;
 		++mpl->media_count;
@@ -158,7 +159,6 @@ static void start_player(struct media_playlist *mpl)
 static void handle_line(struct media_playlist *mpl, const struct pl *line)
 {
 	struct pl file, ext;
-	char *uri = NULL;
 	int err = 0;
 
 	/* ignore comment */
@@ -188,7 +188,9 @@ static void handle_line(struct media_playlist *mpl, const struct pl *line)
 
 		char *filename;
 
-		pl_strdup(&filename, line);
+		err = pl_strdup(&filename, line);
+		if (err)
+			goto out;
 
 		if (!mediafile_find(&mpl->playlist, filename))
 			mediafile_new(&mpl->playlist, filename, mpl->last_dur);
@@ -199,10 +201,9 @@ static void handle_line(struct media_playlist *mpl, const struct pl *line)
 		DEBUG_NOTICE("hls: unknown extension: %r\n", &ext);
 	}
 
+ out:
 	if (err)
 		re_printf("parse error\n");
-
-	mem_deref(uri);
 }
 
 
@@ -299,7 +300,12 @@ int playlist_new(struct media_playlist **plp, const struct client *cli,
 	struct media_playlist *pl;
 	int err;
 
+	if (!plp || !cli || !filename)
+		return EINVAL;
+
 	pl = mem_zalloc(sizeof(*pl), destructor);
+	if (!pl)
+		return ENOMEM;
 
 	pl->cli = cli;
 	pl->last_dur = 10.0;
@@ -323,6 +329,9 @@ int playlist_new(struct media_playlist **plp, const struct client *cli,
 int playlist_start(struct media_playlist *pl)
 {
 	int err;
+
+	if (!pl)
+		return EINVAL;
 
 	err = load_playlist(pl);
 	if (err)
