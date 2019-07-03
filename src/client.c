@@ -78,15 +78,6 @@ static void handle_line(struct client *cli, const struct pl *line)
 	/* ignore comment */
 	if (line->p[0] == '#') {
 
-		struct pl pl_dur;
-
-		/* field: #EXTINF:10.000000 */
-		if (0 == re_regex(line->p, line->l,
-				  "EXTINF:[0-9.]+", &pl_dur)) {
-
-			DEBUG_WARNING("unexpected field (%r)\n", line);
-		}
-
 		if (0 == re_regex(line->p, line->l,
 				  "#EXT-X-MEDIA:[^]+", &val)) {
 
