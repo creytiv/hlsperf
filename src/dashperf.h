@@ -11,7 +11,6 @@
 
 struct client;
 
-
 typedef void (client_error_h)(struct client *cli, int err, void *arg);
 
 struct client {
@@ -24,16 +23,12 @@ struct client {
 	uint64_t ts_start;
 	uint64_t ts_conn;
 	bool connected;
+	bool terminated;
 	int saved_err;
 	uint16_t saved_scode;
-
-	bool terminated;
 	client_error_h *errorh;
 	void *arg;
 };
-
-
-struct client;
 
 
 int  client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri,
@@ -71,8 +66,8 @@ struct media_playlist {
 	const struct client *cli;
 	char *filename;
 	struct list playlist;
-	struct tmr tmr_reload;
 	struct http_req *req;
+	struct tmr tmr_reload;
 	struct tmr tmr_play;
 	double last_dur;
 	bool terminated;
@@ -82,7 +77,6 @@ struct media_playlist {
 	uint64_t ts_media_resp;
 	uint64_t media_time_acc;
 	unsigned media_count;
-
 	uint64_t bitrate_acc;
 };
 
