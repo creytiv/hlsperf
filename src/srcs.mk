@@ -8,3 +8,4 @@ SRCS	+= client.c
 SRCS	+= main.c
 SRCS	+= mediafile.c
 SRCS	+= playlist.c
+SRCS	+= util.c

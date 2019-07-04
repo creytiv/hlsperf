@@ -84,3 +84,10 @@ struct media_playlist {
 int playlist_new(struct media_playlist **plp, const struct client *cli,
 		 const char *filename);
 int playlist_start(struct media_playlist *pl);
+
+
+/*
+ * Utils
+ */
+
+int dns_init(struct dnsc **dnsc);
