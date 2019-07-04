@@ -15,6 +15,7 @@ typedef void (client_error_h)(struct client *cli, int err, void *arg);
 
 struct client {
 	struct http_cli *cli;
+	struct dnsc *dnsc;
 	char *uri;
 	struct pl path;
 	struct media_playlist *mplv[2];
@@ -31,7 +32,7 @@ struct client {
 };
 
 
-int  client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri,
+int  client_alloc(struct client **clip, const char *uri,
 		  client_error_h *errorh, void *arg);
 int  client_start(struct client *cli);
 void client_close(struct client *cli, int err);

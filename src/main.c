@@ -16,8 +16,6 @@
 #include <re_dbg.h>
 
 
-
-
 static void client_error_handler(struct client *cli, int err, void *arg)
 {
 	DEBUG_WARNING("client error (%m)\n", err);
@@ -171,7 +169,6 @@ static void show_summary(struct client * const *cliv, size_t clic)
 
 int main(int argc, char *argv[])
 {
-	struct dnsc *dnsc = NULL;
 	const char *uri;
 	struct tmr tmr;
 	struct client **cliv = NULL;
@@ -231,10 +228,6 @@ int main(int argc, char *argv[])
 
 	(void)sys_coredump_set(true);
 
-	err = dns_init(&dnsc);
-	if (err)
-		goto out;
-
 	cliv = mem_reallocarray(NULL, num_sess, sizeof(*cliv), NULL);
 	if (!cliv) {
 		err = ENOMEM;
@@ -243,7 +236,7 @@ int main(int argc, char *argv[])
 
 	for (i=0; i<num_sess; i++) {
 
-		err = client_alloc(&cliv[i], dnsc, uri,
+		err = client_alloc(&cliv[i], uri,
 				   client_error_handler, NULL);
 		if (err)
 			goto out;
@@ -271,7 +264,6 @@ int main(int argc, char *argv[])
 		}
 	}
 	mem_deref(cliv);
-	mem_deref(dnsc);
 	tmr_cancel(&tmr);
 
 	libre_close();

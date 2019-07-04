@@ -32,6 +32,7 @@ static void destructor(void *data)
 	}
 
 	mem_deref(cli->cli);
+	mem_deref(cli->dnsc);
 	mem_deref(cli->uri);
 }
 
@@ -224,14 +225,14 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 }
 
 
-int client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri,
+int client_alloc(struct client **clip, const char *uri,
 		 client_error_h *errorh, void *arg)
 {
 	struct client *cli;
 	const char *rslash;
 	int err;
 
-	if (!clip || !dnsc || !uri)
+	if (!clip || !uri)
 		return EINVAL;
 
 	rslash = strrchr(uri, '/');
@@ -244,7 +245,11 @@ int client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri,
 	if (!cli)
 		return ENOMEM;
 
-	err = http_client_alloc(&cli->cli, dnsc);
+	err = dns_init(&cli->dnsc);
+	if (err)
+		goto out;
+
+	err = http_client_alloc(&cli->cli, cli->dnsc);
 	if (err)
 		goto out;
 
