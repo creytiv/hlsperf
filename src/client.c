@@ -231,14 +231,6 @@ int client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri,
 	const char *rslash;
 	int err;
 
-#if 0
-#ifdef DARWIN
-	const char *cafile = "/etc/ssl/cert.pem";
-#else
-	const char *cafile = "/etc/ssl/certs/ca-certificates.crt";
-#endif
-#endif
-
 	if (!clip || !dnsc || !uri)
 		return EINVAL;
 
@@ -255,14 +247,6 @@ int client_alloc(struct client **clip, struct dnsc *dnsc, const char *uri,
 	err = http_client_alloc(&cli->cli, dnsc);
 	if (err)
 		goto out;
-
-#if 0
-	err = tls_add_ca(http_client_tls(cli->cli), cafile);
-	if (err) {
-		DEBUG_WARNING("failed to add cafile '%s'\n", cafile);
-		goto out;
-	}
-#endif
 
 	err = str_dup(&cli->uri, uri);
 	if (err)
