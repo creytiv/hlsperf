@@ -17,6 +17,7 @@
 struct client {
 	struct http_cli *cli;
 	struct dnsc *dnsc;
+	struct mqueue *mqueue;
 	char *uri;
 	struct pl path;
 	struct media_playlist *mplv[MAX_PLAYLISTS];
@@ -53,6 +54,7 @@ static void destructor(void *data)
 	mem_deref(cli->cli);
 	mem_deref(cli->dnsc);
 	mem_deref(cli->uri);
+	mem_deref(cli->mqueue);
 }
 
 
@@ -189,6 +191,8 @@ void client_close(struct client *cli, int err)
 	if (!cli)
 		return;
 
+	mqueue_push(cli->mqueue, 0, NULL);
+
 	cli->terminated = true;
 	tmr_cancel(&cli->tmr_load);
 	cli->cli = mem_deref(cli->cli);
@@ -244,6 +248,13 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 }
 
 
+static void mqueue_handler(int id, void *data, void *arg)
+{
+	re_fprintf(stderr, "---> mqueue re_cancel\n");
+	re_cancel();
+}
+
+
 int client_alloc(struct client **clip, const char *uri,
 		 client_error_h *errorh, void *arg)
 {
@@ -263,6 +274,10 @@ int client_alloc(struct client **clip, const char *uri,
 	cli = mem_zalloc(sizeof(*cli), destructor);
 	if (!cli)
 		return ENOMEM;
+
+	err = mqueue_alloc(&cli->mqueue, mqueue_handler, cli);
+	if (err)
+		goto out;
 
 	err = dns_init(&cli->dnsc);
 	if (err)

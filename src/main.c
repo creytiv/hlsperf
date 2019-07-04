@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <pthread.h>
 #include <re.h>
 #include "dashperf.h"
 
@@ -16,9 +17,16 @@
 #include <re_dbg.h>
 
 
+static const char *uri;
+uint32_t num_sess = 1;
+	struct client **cliv = NULL;
+
+
 static void client_error_handler(struct client *cli, int err, void *arg)
 {
-	DEBUG_WARNING("client error (%m)\n", err);
+	if (err) {
+		DEBUG_WARNING("client error (%m)\n", err);
+	}
 
 	re_cancel();
 }
@@ -33,9 +41,19 @@ static void tmr_handler(void *arg)
 
 static void signal_handler(int signum)
 {
+	size_t i;
+
 	(void)signum;
 
-	re_fprintf(stderr, "terminated on signal %d\n", signum);
+	re_fprintf(stderr, "terminated on signal %d (thread %p)\n",
+		   signum, pthread_self());
+
+	for (i=0; i<num_sess; i++) {
+
+		struct client *cli = cliv[i];
+
+		client_close(cli, 0);
+	}
 
 	re_cancel();
 }
@@ -106,7 +124,7 @@ static int stats_print(struct re_printf *pf, const struct stats *stats)
 }
 
 
-static void show_summary(struct client * const *cliv, size_t clic)
+static void show_summary(struct client * const *clivx, size_t clic)
 {
 	struct stats stats_conn, stats_media, stats_bitrate;
 	size_t n_connected = 0;
@@ -118,7 +136,7 @@ static void show_summary(struct client * const *cliv, size_t clic)
 
 	for (i=0; i<clic; i++) {
 
-		const struct client *cli = cliv[i];
+		const struct client *cli = clivx[i];
 		struct media_playlist * const *mplv;
 		int64_t conn_time;
 
@@ -169,12 +187,44 @@ static void show_summary(struct client * const *cliv, size_t clic)
 }
 
 
+static void *thread_handler(void *arg)
+{
+	struct client **clip = arg;
+	int err;
+
+	re_fprintf(stderr, "thread enter: %p\n", pthread_self());
+
+	err = re_thread_init();
+	if (err) {
+		DEBUG_WARNING("re thread init: %m\n", err);
+		return NULL;
+	}
+
+	err = client_alloc(clip, uri, client_error_handler, NULL);
+	if (err)
+		goto out;
+
+	err = client_start(*clip);
+	if (err)
+		goto out;
+
+	/* run the main loop now */
+	re_main(signal_handler);
+
+ out:
+	/* cleanup */
+	re_thread_close();
+
+	re_fprintf(stderr, "thread exit: %p\n", pthread_self());
+
+	return NULL;
+}
+
+
 int main(int argc, char *argv[])
 {
-	const char *uri;
 	struct tmr tmr;
-	struct client **cliv = NULL;
-	uint32_t num_sess = 1;
+	pthread_t *tidv = NULL;
 	uint32_t timeout = 0;
 	size_t i;
 	int err = 0;
@@ -214,6 +264,8 @@ int main(int argc, char *argv[])
 
 	re_printf("dashperf -- uri=%s, sessions=%u\n", uri, num_sess);
 
+	re_printf("main: thread %p\n", pthread_self());
+
 	err = fd_setsize(4096);
 	if (err) {
 		re_fprintf(stderr, "fd_setsize error: %m\n", err);
@@ -231,6 +283,7 @@ int main(int argc, char *argv[])
 	(void)sys_coredump_set(true);
 
 	cliv = mem_reallocarray(NULL, num_sess, sizeof(*cliv), NULL);
+	tidv = mem_reallocarray(NULL, num_sess, sizeof(*tidv), NULL);
 	if (!cliv) {
 		err = ENOMEM;
 		goto out;
@@ -238,14 +291,9 @@ int main(int argc, char *argv[])
 
 	for (i=0; i<num_sess; i++) {
 
-		err = client_alloc(&cliv[i], uri,
-				   client_error_handler, NULL);
+		err = pthread_create(&tidv[i], NULL, thread_handler, &cliv[i]);
 		if (err)
-			goto out;
-
-		err = client_start(cliv[i]);
-		if (err)
-			goto out;
+			return err;
 	}
 
 	if (timeout != 0) {
@@ -258,6 +306,20 @@ int main(int argc, char *argv[])
 	re_printf("Hasta la vista\n");
 
  out:
+	for (i=0; i<num_sess; i++) {
+
+		struct client *cli = cliv[i];
+
+		client_close(cli, 0);
+
+		re_printf("client %u -- joining thread ..\n", i);
+
+		/* wait for thread to end */
+		pthread_join(tidv[i], NULL);
+
+		re_printf("client %u -- joined.\n", i);
+	}
+
 	if (cliv) {
 		show_summary(cliv, num_sess);
 
@@ -266,6 +328,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	mem_deref(cliv);
+	mem_deref(tidv);
 	tmr_cancel(&tmr);
 
 	libre_close();
