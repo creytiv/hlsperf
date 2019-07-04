@@ -112,7 +112,7 @@ static int get_media_file(struct media_playlist *mpl, struct mediafile *mf,
 {
 	int err;
 
-	err = http_request(NULL, mpl->cli->cli, "GET", uri,
+	err = http_request(NULL, client_http_cli(mpl->cli), "GET", uri,
 			   media_http_resp_handler,
 			   http_data_handler, mpl, NULL);
 	if (err) {
@@ -140,7 +140,8 @@ static void start_player(struct media_playlist *mpl)
 		delay = mf->duration*1000;
 
 		/* download the media file */
-		err = re_sdprintf(&uri, "%r%s", &mpl->cli->path, mf->filename);
+		err = re_sdprintf(&uri, "%r%s",
+				  client_path(mpl->cli), mf->filename);
 		if (err)
 			goto out;
 
@@ -266,15 +267,16 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 }
 
 
-static int load_playlist(struct media_playlist *pl)
+static int load_playlist(struct media_playlist *mpl)
 {
 	char uri[512];
 	int err;
 
-	re_snprintf(uri, sizeof(uri), "%r%s", &pl->cli->path, pl->filename);
+	re_snprintf(uri, sizeof(uri), "%r%s",
+		    client_path(mpl->cli), mpl->filename);
 
-	err = http_request(&pl->req, pl->cli->cli, "GET", uri,
-			   http_resp_handler, NULL, pl, NULL);
+	err = http_request(&mpl->req, client_http_cli(mpl->cli), "GET", uri,
+			   http_resp_handler, NULL, mpl, NULL);
 	if (err) {
 		re_printf("http request failed (%m)\n", err);
 		return err;

@@ -14,6 +14,25 @@
 #include <re_dbg.h>
 
 
+struct client {
+	struct http_cli *cli;
+	struct dnsc *dnsc;
+	char *uri;
+	struct pl path;
+	struct media_playlist *mplv[MAX_PLAYLISTS];
+	uint32_t slid;
+	struct tmr tmr_load;
+	uint64_t ts_start;
+	uint64_t ts_conn;
+	bool connected;
+	bool terminated;
+	int saved_err;
+	uint16_t saved_scode;
+	client_error_h *errorh;
+	void *arg;
+};
+
+
 static int load_playlist(struct client *cli);
 static void http_resp_handler(int err, const struct http_msg *msg, void *arg);
 
@@ -310,4 +329,37 @@ int client_start(struct client *cli)
 	tmr_start(&cli->tmr_load, delay, tmr_load_handler, cli);
 
 	return 0;
+}
+
+
+bool client_connected(const struct client *cli)
+{
+	return cli ? cli->connected : false;
+}
+
+
+int64_t client_conn_time(const struct client *cli)
+{
+	if (!cli)
+		return 0;
+
+	return cli->ts_conn - cli->ts_start;
+}
+
+
+struct media_playlist * const *client_playlists(const struct client *cli)
+{
+	return cli ? cli->mplv : NULL;
+}
+
+
+struct http_cli *client_http_cli(const struct client *cli)
+{
+	return cli ? cli->cli : NULL;
+}
+
+
+const struct pl *client_path(const struct client *cli)
+{
+	return cli ? &cli->path : NULL;
 }

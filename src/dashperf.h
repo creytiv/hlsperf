@@ -5,6 +5,9 @@
  */
 
 
+#define MAX_PLAYLISTS 2
+
+
 /*
  * Client
  */
@@ -13,29 +16,15 @@ struct client;
 
 typedef void (client_error_h)(struct client *cli, int err, void *arg);
 
-struct client {
-	struct http_cli *cli;
-	struct dnsc *dnsc;
-	char *uri;
-	struct pl path;
-	struct media_playlist *mplv[2];
-	uint32_t slid;
-	struct tmr tmr_load;
-	uint64_t ts_start;
-	uint64_t ts_conn;
-	bool connected;
-	bool terminated;
-	int saved_err;
-	uint16_t saved_scode;
-	client_error_h *errorh;
-	void *arg;
-};
-
-
 int  client_alloc(struct client **clip, const char *uri,
 		  client_error_h *errorh, void *arg);
 int  client_start(struct client *cli);
 void client_close(struct client *cli, int err);
+bool client_connected(const struct client *cli);
+int64_t client_conn_time(const struct client *cli);
+struct media_playlist * const *client_playlists(const struct client *cli);
+struct http_cli *client_http_cli(const struct client *cli);
+const struct pl *client_path(const struct client *cli);
 
 
 /*

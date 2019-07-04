@@ -20,8 +20,7 @@ static void client_error_handler(struct client *cli, int err, void *arg)
 {
 	DEBUG_WARNING("client error (%m)\n", err);
 
-	if (cli->saved_scode == 404)
-		re_cancel();
+	re_cancel();
 }
 
 
@@ -120,20 +119,23 @@ static void show_summary(struct client * const *cliv, size_t clic)
 	for (i=0; i<clic; i++) {
 
 		const struct client *cli = cliv[i];
+		struct media_playlist * const *mplv;
 		int64_t conn_time;
 
-		if (!cliv[i]->connected)
+		if (!client_connected(cli))
 			continue;
 
 		++n_connected;
 
-		conn_time = cli->ts_conn - cli->ts_start;
+		conn_time = client_conn_time(cli);
 
 		stats_update(&stats_conn, conn_time);
 
-		for (j=0; j<ARRAY_SIZE(cli->mplv); j++) {
+		mplv = client_playlists(cli);
 
-			struct media_playlist *mpl = cli->mplv[j];
+		for (j=0; j<MAX_PLAYLISTS; j++) {
+
+			struct media_playlist *mpl = mplv[j];
 
 			if (!mpl)
 				continue;
