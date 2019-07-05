@@ -186,6 +186,9 @@ static int handle_hls_playlist(struct client *cli, const struct http_msg *msg)
 }
 
 
+/*
+ * NOTE: may be called from any thread
+ */
 void client_close(struct client *cli, int err)
 {
 	if (!cli)
@@ -194,8 +197,8 @@ void client_close(struct client *cli, int err)
 	mqueue_push(cli->mqueue, 0, NULL);
 
 	cli->terminated = true;
-	tmr_cancel(&cli->tmr_load);
 	cli->cli = mem_deref(cli->cli);
+	cli->dnsc = mem_deref(cli->dnsc);
 
 	if (cli->errorh)
 		cli->errorh(cli, err, cli->arg);
@@ -250,7 +253,13 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 
 static void mqueue_handler(int id, void *data, void *arg)
 {
+	struct client *cli = arg;
+
 	re_fprintf(stderr, "---> mqueue re_cancel\n");
+
+	/* note: timer must be closed from thread context */
+	tmr_cancel(&cli->tmr_load);
+
 	re_cancel();
 }
 
