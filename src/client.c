@@ -197,7 +197,6 @@ void client_close(struct client *cli, int err)
 	mqueue_push(cli->mqueue, 0, NULL);
 
 	cli->terminated = true;
-	cli->cli = mem_deref(cli->cli);
 	cli->dnsc = mem_deref(cli->dnsc);
 
 	if (cli->errorh)
@@ -265,6 +264,8 @@ static void mqueue_handler(int id, void *data, void *arg)
 
 		playlist_close(cli->mplv[i], 0);
 	}
+
+	cli->cli = mem_deref(cli->cli);
 
 	re_cancel();
 }
