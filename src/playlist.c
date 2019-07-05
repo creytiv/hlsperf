@@ -36,8 +36,11 @@ static void destructor(void *data)
 }
 
 
-static void playlist_close(struct media_playlist *mpl, int err)
+void playlist_close(struct media_playlist *mpl, int err)
 {
+	if (!mpl)
+		return;
+
 	mpl->terminated = true;
 
 	tmr_cancel(&mpl->tmr_play);

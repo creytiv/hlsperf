@@ -254,11 +254,17 @@ static void http_resp_handler(int err, const struct http_msg *msg, void *arg)
 static void mqueue_handler(int id, void *data, void *arg)
 {
 	struct client *cli = arg;
+	size_t i;
 
 	re_fprintf(stderr, "---> mqueue re_cancel\n");
 
 	/* note: timer must be closed from thread context */
 	tmr_cancel(&cli->tmr_load);
+
+	for (i=0; i<ARRAY_SIZE(cli->mplv); i++) {
+
+		playlist_close(cli->mplv[i], 0);
+	}
 
 	re_cancel();
 }
