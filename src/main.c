@@ -192,8 +192,6 @@ static void *client_thread_handler(void *arg)
 	struct client **clip = arg;
 	int err;
 
-	re_fprintf(stderr, "thread enter: %p\n", pthread_self());
-
 	err = re_thread_init();
 	if (err) {
 		DEBUG_WARNING("re thread init: %m\n", err);
@@ -203,7 +201,7 @@ static void *client_thread_handler(void *arg)
 	/* must be set per thread.
 	 * must be done after re_thread_init()
 	 */
-	err = fd_setsize(4096);
+	err = fd_setsize(8192);
 	if (err) {
 		re_fprintf(stderr, "fd_setsize error: %m\n", err);
 		goto out;
@@ -223,8 +221,6 @@ static void *client_thread_handler(void *arg)
  out:
 	/* cleanup */
 	re_thread_close();
-
-	re_fprintf(stderr, "thread exit: %p\n", pthread_self());
 
 	return NULL;
 }
