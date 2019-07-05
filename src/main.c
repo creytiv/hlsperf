@@ -194,6 +194,12 @@ static void *thread_handler(void *arg)
 
 	re_fprintf(stderr, "thread enter: %p\n", pthread_self());
 
+	err = fd_setsize(4096);
+	if (err) {
+		re_fprintf(stderr, "fd_setsize error: %m\n", err);
+		goto out;
+	}
+
 	err = re_thread_init();
 	if (err) {
 		DEBUG_WARNING("re thread init: %m\n", err);
