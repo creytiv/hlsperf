@@ -187,7 +187,7 @@ static void show_summary(struct client * const *clivx, size_t clic)
 }
 
 
-static void *thread_handler(void *arg)
+static void *client_thread_handler(void *arg)
 {
 	struct client **clip = arg;
 	int err;
@@ -300,7 +300,8 @@ int main(int argc, char *argv[])
 
 	for (i=0; i<num_sess; i++) {
 
-		err = pthread_create(&tidv[i], NULL, thread_handler, &cliv[i]);
+		err = pthread_create(&tidv[i], NULL,
+				     client_thread_handler, &cliv[i]);
 		if (err)
 			return err;
 	}
