@@ -316,21 +316,17 @@ int main(int argc, char *argv[])
 	re_printf("Hasta la vista\n");
 
  out:
-	for (i=0; i<num_sess; i++) {
+	if (cliv && tidv) {
+		for (i=0; i<num_sess; i++) {
 
-		struct client *cli = cliv[i];
+			struct client *cli = cliv[i];
 
-		client_close(cli, 0);
+			client_close(cli, 0);
 
-		re_printf("client %u -- joining thread ..\n", i);
+			/* wait for thread to end */
+			pthread_join(tidv[i], NULL);
+		}
 
-		/* wait for thread to end */
-		pthread_join(tidv[i], NULL);
-
-		re_printf("client %u -- joined.\n", i);
-	}
-
-	if (cliv) {
 		show_summary(cliv, num_sess);
 
 		for (i=0; i<num_sess; i++) {
