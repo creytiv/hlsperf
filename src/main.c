@@ -18,8 +18,8 @@
 
 
 static const char *uri;
-uint32_t num_sess = 1;
-	struct client **cliv = NULL;
+static uint32_t num_sess = 1;
+static struct client **cliv = NULL;
 
 
 static void client_error_handler(struct client *cli, int err, void *arg)
@@ -289,7 +289,7 @@ int main(int argc, char *argv[])
 
 	cliv = mem_reallocarray(NULL, num_sess, sizeof(*cliv), NULL);
 	tidv = mem_reallocarray(NULL, num_sess, sizeof(*tidv), NULL);
-	if (!cliv) {
+	if (!cliv || !tidv) {
 		err = ENOMEM;
 		goto out;
 	}
