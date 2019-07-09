@@ -46,6 +46,9 @@ void playlist_close(struct media_playlist *mpl, int err)
 
 	tmr_cancel(&mpl->tmr_play);
 	tmr_cancel(&mpl->tmr_reload);
+
+	mpl->req       = mem_deref(mpl->req);
+	mpl->req_media = mem_deref(mpl->req_media);
 }
 
 
