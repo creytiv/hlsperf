@@ -32,6 +32,7 @@ static void destructor(void *data)
 	tmr_cancel(&pl->tmr_reload);
 	mem_deref(pl->filename);
 	mem_deref(pl->req);
+	mem_deref(pl->req_media);
 	list_flush(&pl->playlist);
 }
 
@@ -115,7 +116,10 @@ static int get_media_file(struct media_playlist *mpl, struct mediafile *mf,
 {
 	int err;
 
-	err = http_request(NULL, client_http_cli(mpl->cli), "GET", uri,
+	mpl->req_media = mem_deref(mpl->req_media);
+
+	err = http_request(&mpl->req_media, client_http_cli(mpl->cli),
+			   "GET", uri,
 			   media_http_resp_handler,
 			   http_data_handler, mpl, NULL);
 	if (err) {

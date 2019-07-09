@@ -57,6 +57,7 @@ struct media_playlist {
 	char *filename;
 	struct list playlist;
 	struct http_req *req;
+	struct http_req *req_media;
 	struct tmr tmr_reload;
 	struct tmr tmr_play;
 	double last_dur;
