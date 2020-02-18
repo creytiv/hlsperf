@@ -177,7 +177,8 @@ static int handle_hls_playlist(struct client *cli, const struct http_msg *msg)
 		line.p = pl.p;
 		line.l = end - pl.p;
 
-		handle_line(cli, &line);
+		if (line.l > 0)
+			handle_line(cli, &line);
 
 		pl_advance(&pl, line.l + 1);
 	}
