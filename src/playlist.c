@@ -81,7 +81,8 @@ static void media_http_resp_handler(int err, const struct http_msg *msg,
 		return;
 	}
 
-	if (msg_ctype_cmp(&msg->ctyp, "video", "mp4")) {
+	if (msg_ctype_cmp(&msg->ctyp, "video", "mp4") ||
+	    msg_ctype_cmp(&msg->ctyp, "application", "octet-stream")) {
 
 		int64_t media_time;
 		double bitrate;
