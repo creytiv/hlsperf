@@ -201,7 +201,7 @@ static void *client_thread_handler(void *arg)
 	/* must be set per thread.
 	 * must be done after re_thread_init()
 	 */
-	err = fd_setsize(8192);
+	err = fd_setsize(65536);
 	if (err) {
 		re_fprintf(stderr, "fd_setsize error: %m\n", err);
 		goto out;
