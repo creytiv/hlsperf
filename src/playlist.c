@@ -15,7 +15,7 @@
 
 
 enum {
-	RELOAD_INTERVAL = 16  /* seconds */
+	RELOAD_INTERVAL = 6  /* seconds */
 };
 
 
