@@ -68,11 +68,8 @@ static int add_playlist(struct client *cli, const char *filename)
 
 		unsigned ix = pl_u32(&media_ix);
 
-		if (ix >= ARRAY_SIZE(cli->mplv)) {
-			re_printf("index out of range (%u >= %zu)\n",
-				  ix, ARRAY_SIZE(cli->mplv));
+		if (ix >= ARRAY_SIZE(cli->mplv))
 			return 0;
-		}
 
 		err = playlist_new(&cli->mplv[ix], cli, filename);
 		if (err)
