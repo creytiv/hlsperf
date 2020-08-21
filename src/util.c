@@ -1,5 +1,5 @@
 /**
- * @file util.c Dash Performance client -- utility functions
+ * @file util.c HLS Performance client -- utility functions
  *
  * Copyright (C) 2019 Creytiv.com
  */
@@ -8,10 +8,10 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <re.h>
-#include "dashperf.h"
+#include "hlsperf.h"
 
 
-#define DEBUG_MODULE "dashperf"
+#define DEBUG_MODULE "hlsperf"
 #define DEBUG_LEVEL 6
 #include <re_dbg.h>
 

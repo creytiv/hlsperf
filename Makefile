@@ -4,7 +4,7 @@
 # Copyright (C) 2010 Creytiv.com
 #
 
-PROJECT	  := dashperf
+PROJECT	  := hlsperf
 VERSION   := 0.6.0
 
 LIBRE_MK  := $(shell [ -f ../re/mk/re.mk ] && \

@@ -1,15 +1,15 @@
 /**
- * @file playlist.c Dash Performance client -- media playlist
+ * @file playlist.c HLS Performance client -- media playlist
  *
  * Copyright (C) 2019 Creytiv.com
  */
 
 #include <string.h>
 #include <re.h>
-#include "dashperf.h"
+#include "hlsperf.h"
 
 
-#define DEBUG_MODULE "dashperf"
+#define DEBUG_MODULE "hlsperf"
 #define DEBUG_LEVEL 6
 #include <re_dbg.h>
 

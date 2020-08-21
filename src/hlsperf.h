@@ -1,5 +1,5 @@
 /**
- * @file dashperf.h Dash Performance client -- interface
+ * @file hlsperf.h HLS Performance client -- interface
  *
  * Copyright (C) 2019 Creytiv.com
  */

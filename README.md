@@ -1,2 +1,2 @@
-# dashperf
+# hlsperf
 Streaming performance client

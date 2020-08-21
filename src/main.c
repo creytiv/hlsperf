@@ -9,10 +9,10 @@
 #include <getopt.h>
 #include <pthread.h>
 #include <re.h>
-#include "dashperf.h"
+#include "hlsperf.h"
 
 
-#define DEBUG_MODULE "dashperf"
+#define DEBUG_MODULE "hlsperf"
 #define DEBUG_LEVEL 6
 #include <re_dbg.h>
 
@@ -62,7 +62,7 @@ static void signal_handler(int signum)
 static void usage(void)
 {
 	re_fprintf(stderr,
-		   "usage: dashperf [-n num] [-t timeout] <http-uri>\n"
+		   "usage: hlsperf [-n num] [-t timeout] <http-uri>\n"
 		   "\t-n <num>      Number of parallel sessions\n"
 		   "\t-t <timeout>  Timeout in seconds\n");
 }
@@ -176,7 +176,7 @@ static void show_summary(struct client * const *clivx, size_t clic)
 		}
 	}
 
-	re_printf("- - - dashperf summary - - -\n");
+	re_printf("- - - hlsperf summary - - -\n");
 	re_printf("total sessions:  %zu\n", clic);
 	re_printf("connected:       %zu\n", n_connected);
 	re_printf("conn min/avg/max:   %H ms\n", stats_print, &stats_conn);
@@ -267,7 +267,7 @@ int main(int argc, char *argv[])
 
 	uri = argv[optind + 0];
 
-	re_printf("dashperf -- uri=%s, sessions=%u\n", uri, num_sess);
+	re_printf("hlsperf -- uri=%s, sessions=%u\n", uri, num_sess);
 
 	re_printf("main: thread %p\n", pthread_self());
 
